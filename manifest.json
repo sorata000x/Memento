@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Memento",
+  "version": "1.0",
+  "description": "A Chrome extension built with Next.js",
+  "permissions": ["sidePanel", "storage", "activeTab", "scripting"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  
+  "icons": {
+  },
+  "action": {
+    "default_title": "Memento"
+  },
+  "side_panel": {
+    "default_path": "index.html"
+  }
+}
