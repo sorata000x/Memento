@@ -4,6 +4,7 @@ import { addNote, fetchNotes } from './api/notes';
 import {v4 as uuid} from 'uuid';
 import { hybridSearch } from './api/search';
 import generateEmbedding, { chatWithNotes } from './api/openai';
+import ReactMarkdown from 'react-markdown';
 
 function App() {
   type Message = {
@@ -145,7 +146,7 @@ const AssistantMessage = ({content}: MessageProps) => {
         <div style={{ width: "4px", height: "100%", backgroundColor: "#525252"}} />
       </div>
       <div className="p-2 pt-2 pb-2 w-full">
-        {content}
+        <ReactMarkdown>{content}</ReactMarkdown>
       </div>
     </div>
   )
@@ -154,7 +155,7 @@ const AssistantMessage = ({content}: MessageProps) => {
 const UserMessage = ({content}: MessageProps) => {
   return (
     <div className="p-4 pt-2 pb-2 w-full">
-      {content}
+      <ReactMarkdown>{content}</ReactMarkdown>
     </div>
   )
 }
