@@ -8,12 +8,13 @@ export async function fetchNotes() {
 }
 
 // Add note
-export async function addNote({ content, embedding }: {
+export async function addNote({ role, content, embedding }: {
+    role: string,
     content: string,
     embedding: number[],
   }) {
     try {
-        const { data, error } = await supabase.from('notes').insert({ content, embedding });
+        const { data, error } = await supabase.from('notes').insert({ role, content, embedding });
         if (error || !data) throw error;
         return data[0];
     } catch (e) {

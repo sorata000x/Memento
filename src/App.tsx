@@ -10,6 +10,7 @@ function App() {
     id: string;
     content: string;
     created_at: string; // ISO date string
+    role: string;
   };
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -28,7 +29,7 @@ function App() {
     update();
   }, []);
 
-  async function handleAddNote(content: string) {
+  async function handleAddNote(role: string, content: string) {
     const id = uuid();
     const created_at = new Date().toISOString();
     const embedding = await generateEmbedding(content);
@@ -38,10 +39,12 @@ function App() {
         id,
         content,
         created_at,
-        embedding
+        embedding,
+        role,
       },
     ]);
     await addNote({
+      role,
       content,
       embedding
     });
@@ -81,7 +84,7 @@ function App() {
     const notes = await handleHybridSearch(input);
     const response = await chatWithNotes(input, notes);
     if(!response) return;
-    handleAddNote(response)
+    handleAddNote('assistant', response)
   }
 
   const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -90,10 +93,10 @@ function App() {
       if (input) {
         // Search notes if first two characters are spaces
         if (input.startsWith(' ')) {
-          await handleAddNote(input.trim());
+          await handleAddNote('user', input.trim());
           handleChat(input.trim());
         } else {
-          handleAddNote(input);
+          handleAddNote('user', input);
         }
         (e.target as HTMLInputElement).value = ""; // Clear the input field
       }
@@ -103,8 +106,17 @@ function App() {
   return (
     <div className='flex justify-start items-start w-full bg-blue-500'>
       <div style={sidePanelStyle} className="flex flex-col h-full pb-8">
-      <div className="p-2 pb-5 flex-grow overflow-auto flex flex-col scrollbar scrollbar-thumb-blue-500 scrollbar-track-gray-300">
-        {messages.map((m) => <Message key={uuid()} content={m.content} />)}
+      <div className="pt-3 pb-5 flex-grow overflow-auto flex flex-col scrollbar scrollbar-thumb-blue-500 scrollbar-track-gray-300">
+        {
+          messages.map((m) => {
+            if (m.role == 'user') {
+              return <UserMessage key={uuid()} content={m.content} />
+            } 
+            if (m.role == 'assistant') {
+              return <AssistantMessage key={uuid()} content={m.content} />
+            }
+          })
+        }
       </div>
       <div className="p-3 pt-0">
         <input 
@@ -126,9 +138,22 @@ type MessageProps = {
   content: string;
 };
 
-const Message = ({content}: MessageProps) => {
+const AssistantMessage = ({content}: MessageProps) => {
   return (
-    <div className="p-2">
+    <div className='flex'>
+      <div className='w-2'>
+        <div style={{ width: "4px", height: "100%", backgroundColor: "#525252"}} />
+      </div>
+      <div className="p-2 pt-2 pb-2 w-full">
+        {content}
+      </div>
+    </div>
+  )
+}
+
+const UserMessage = ({content}: MessageProps) => {
+  return (
+    <div className="p-4 pt-2 pb-2 w-full">
       {content}
     </div>
   )
