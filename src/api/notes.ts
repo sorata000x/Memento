@@ -2,18 +2,19 @@ import { supabase } from '../lib/supabase';
 
 // Fetch notes
 export async function fetchNotes() {
-    const { data, error } = await supabase.from('notes').select('*');
+    const { data, error } = await supabase.from('notes').select('*').order('created_at', { ascending: true });
     if (error) throw error;
     return data;
 }
 
 // Add note
-export async function addNote({ content, embedding }: {
+export async function addNote({ role, content, embedding }: {
+    role: string,
     content: string,
     embedding: number[],
   }) {
     try {
-        const { data, error } = await supabase.from('notes').insert({ content, embedding });
+        const { data, error } = await supabase.from('notes').insert({ role, content, embedding });
         if (error || !data) throw error;
         return data[0];
     } catch (e) {

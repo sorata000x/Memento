@@ -1,17 +1,21 @@
 import './App.css'
-import React, { useState, useEffect } from 'react';
-import { addNote, fetchNotes } from './api/notes';
+import React, { useState, useEffect, useRef } from 'react';
+import { addNote, fetchNotes, updateNote } from './api/notes';
 import {v4 as uuid} from 'uuid';
 import { hybridSearch } from './api/search';
 import generateEmbedding, { chatWithNotes } from './api/openai';
+import ReactMarkdown from 'react-markdown';
+import { IoIosArrowBack } from "react-icons/io";
+
+type Message = {
+  id: string;
+  content: string;
+  created_at: string; // ISO date string
+  role: string;
+};
 
 function App() {
-  type Message = {
-    id: string;
-    content: string;
-    created_at: string; // ISO date string
-  };
-
+  const [editing, setEditing] = useState<Message | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
 
   const sidePanelStyle = {
@@ -24,11 +28,19 @@ function App() {
     setMessages(await fetchNotes());
   }
 
+  const containerRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     update();
   }, []);
 
-  async function handleAddNote(content: string) {
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight; // Scroll to the bottom
+    }
+  }, [messages])
+
+  async function handleAddNote(role: string, content: string) {
     const id = uuid();
     const created_at = new Date().toISOString();
     const embedding = await generateEmbedding(content);
@@ -38,13 +50,23 @@ function App() {
         id,
         content,
         created_at,
-        embedding
+        embedding,
+        role,
       },
     ]);
     await addNote({
+      role,
       content,
       embedding
     });
+  }
+
+  async function handleUpdateNote(id: string, content: string) {
+    const newMessages = messages.map((m) =>
+      m.id === id ? { ...m, content: content } : m
+    );
+    setMessages(newMessages);
+    await updateNote(id, {content});
   }
 
   /* async function updateNote(id: string, content: string) {
@@ -81,7 +103,7 @@ function App() {
     const notes = await handleHybridSearch(input);
     const response = await chatWithNotes(input, notes);
     if(!response) return;
-    handleAddNote(response)
+    handleAddNote('assistant', response)
   }
 
   const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -90,11 +112,12 @@ function App() {
       if (input) {
         // Search notes if first two characters are spaces
         if (input.startsWith(' ')) {
-          await handleAddNote(input.trim());
+          await handleAddNote('user', input.trim());
           handleChat(input.trim());
         } else {
-          handleAddNote(input);
+          handleAddNote('user', input);
         }
+        setEditing(null); // Close note editor
         (e.target as HTMLInputElement).value = ""; // Clear the input field
       }
     }
@@ -103,8 +126,12 @@ function App() {
   return (
     <div className='flex justify-start items-start w-full bg-blue-500'>
       <div style={sidePanelStyle} className="flex flex-col h-full pb-8">
-      <div className="p-2 pb-5 flex-grow overflow-auto flex flex-col scrollbar scrollbar-thumb-blue-500 scrollbar-track-gray-300">
-        {messages.map((m) => <Message key={uuid()} content={m.content} />)}
+      <div 
+        ref={containerRef}
+        className="pt-3 pb-5 flex-grow overflow-auto flex flex-col scrollbar scrollbar-thumb-blue-500 scrollbar-track-gray-300">
+        {editing ? 
+          <NoteEdit content={editing.content} onChange={(e) => {handleUpdateNote(editing.id, e.target.value)}} close={() => {setEditing(null)}}/> : 
+          <NoteChat messages={messages} onNoteClick={(note) => {setEditing(note)}}/>}
       </div>
       <div className="p-3 pt-0">
         <input 
@@ -126,10 +153,71 @@ type MessageProps = {
   content: string;
 };
 
-const Message = ({content}: MessageProps) => {
+const AssistantMessage = ({content}: MessageProps) => {
   return (
-    <div className="p-2">
-      {content}
+    <div className='flex'>
+      <div className='w-2'>
+        <div style={{ width: "4px", height: "100%", backgroundColor: "#525252"}} />
+      </div>
+      <div className="p-2 pt-2 pb-2 w-full">
+        <ReactMarkdown>{content}</ReactMarkdown>
+      </div>
+    </div>
+  )
+}
+
+const UserMessage = ({content, onClick}: {content: string, onClick: () => void}) => {
+  return (
+    <div className="p-4 pt-2 pb-2 w-full user-message cursor-pointer" onClick={onClick}>
+      <ReactMarkdown>{content}</ReactMarkdown>
+    </div>
+  )
+}
+
+const NoteChat = ({messages, onNoteClick}: {messages: Message[], onNoteClick: (m: Message) => void}) => {
+  return <>
+    {
+      messages.map((m) => {
+        if (m.role == 'user') {
+          return <UserMessage key={uuid()} content={m.content} onClick={() => onNoteClick(m)}/>
+        } 
+        if (m.role == 'assistant') {
+          return <AssistantMessage key={uuid()} content={m.content} />
+        }
+      })
+    }
+  </>
+}
+
+const NoteEdit = ({content, onChange, close}: {content: string, onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void, close: () => void}) => {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [value, setValue] = useState<string>(content);
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.focus(); // Autofocus
+      textareaRef.current.selectionStart = textareaRef.current.value.length; // Set cursor position to the end
+      textareaRef.current.selectionEnd = textareaRef.current.value.length;
+    }
+  }, []);
+  
+  return (
+    <div className='flex flex-col h-full'>
+      <IoIosArrowBack className='m-1 ml-3 mb-0 cursor-pointer' onClick={() => close()} size={22}/>
+      <textarea
+        ref={textareaRef}
+        value={value}
+        onChange={(e) => {
+          setValue(e.target.value);
+          onChange(e);
+        }}
+        placeholder='tesrt'
+        className='h-full bg-transparent focus:outline-none p-4 pt-2 pb-2'
+        style={{
+          boxSizing: 'border-box',
+          resize: 'none',
+        }}
+      />
     </div>
   )
 }

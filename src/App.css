@@ -2,3 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
+.user-message:hover {
+  background-color: #292929
+}
