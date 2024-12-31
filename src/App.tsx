@@ -32,10 +32,13 @@ function App() {
 
   useEffect(() => {
     update();
+  }, []);
+
+  useEffect(() => {
     if (containerRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight; // Scroll to the bottom
     }
-  }, [messages]);
+  }, [messages])
 
   async function handleAddNote(role: string, content: string) {
     const id = uuid();
