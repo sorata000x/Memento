@@ -2,7 +2,7 @@ import { supabase } from '../lib/supabase';
 
 // Fetch notes
 export async function fetchNotes() {
-    const { data, error } = await supabase.from('notes').select('*');
+    const { data, error } = await supabase.from('notes').select('*').order('created_at', { ascending: true });
     if (error) throw error;
     return data;
 }
