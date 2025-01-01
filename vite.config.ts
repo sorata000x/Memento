@@ -1,18 +1,16 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react-swc'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
   build: {
     rollupOptions: {
       input: {
-        sidepanel: 'index.html', // Entry point for side panel
+        main: './index.html',         // Main app entry
+        onboarding: './onboarding.html', // Onboarding entry
       },
       output: {
-        entryFileNames: 'assets/[name].js',
-        chunkFileNames: 'assets/[name].js',
-        assetFileNames: 'assets/[name].[ext]',
+        entryFileNames: '[name].js', // This will output 'onboarding.js' and 'main.js'
       },
     },
   },
