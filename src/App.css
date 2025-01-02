@@ -5,3 +5,15 @@
 .user-message:hover {
   background-color: #292929
 }
+
+.suggestion {
+  background-color: #2f2f2f;
+}
+
+.suggestion:hover {
+  background-color: #393939;
+}
+input::placeholder {
+  background-color: lightblue;
+  padding: 2px;
+}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { addNote, fetchNotes, updateNote } from '../api/notes';
 import {v4 as uuid} from 'uuid';
-import { hybridSearch } from '../api/search';
+import { hybridSearch, searchNotesByPrefix } from '../api/search';
 import generateEmbedding, { chatWithNotes } from '../api/openai';
 import ReactMarkdown from 'react-markdown';
 import { IoIosArrowBack } from "react-icons/io";
@@ -10,7 +10,7 @@ import { supabase } from '../lib/supabase';
 import { User } from '@supabase/supabase-js';
 import '../App.css';
 
-type Message = {
+export type Message = {
   id: string;
   content: string;
   created_at: string; // ISO date string
@@ -24,7 +24,6 @@ export function MainPage() {
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
 
   const sidePanelStyle = {
-    width: '560px', // Set the width to match Chrome's side panel size
     height: '100vh', // Full viewport height
     backgroundColor: "#212121",
   };
@@ -116,19 +115,76 @@ export function MainPage() {
     handleAddNote('assistant', response)
   }
 
+  const [noteSuggestions, setNoteSuggestions] = useState<Message[]>([]);
+  const [commandSuggestions, setCommandSuggestions] = useState<string[]>([]);
+
+  const handleInputChange: React.ChangeEventHandler<HTMLInputElement> = async (e) => {
+    const input = (e.target as HTMLInputElement).value;
+    setInput(input);
+    const commands = [
+      '/open <note-name>'
+    ]
+    if (input.startsWith('/open ') && input.length >= 7) {
+      const target = input.substring(6);
+      const matchedNotes = await searchNotesByPrefix(target);
+      setNoteSuggestions(matchedNotes);
+      setCommandSuggestions([]);
+    } else if (input.startsWith('/')) {
+      // Handle generic command matching case
+      const matchingCommands = commands.filter(command => command.startsWith(input));
+      setCommandSuggestions(matchingCommands);
+    } else {
+      setNoteSuggestions([]);
+      setCommandSuggestions([]);
+    }
+  }
+
+  function extractCommonPrefix(strings: string[]): string {
+      if (strings.length === 0) return "";
+
+      let prefix = strings[0]; // Start with the first string
+
+      for (let i = 1; i < strings.length; i++) {
+          while (strings[i].indexOf(prefix) !== 0) {
+              prefix = prefix.slice(0, -1); // Trim the prefix from the end
+              if (prefix === "") return ""; // If no common prefix, return empty string
+          }
+      }
+
+      return prefix;
+  }
+
   const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key == "Tab") {
+      if (commandSuggestions.length > 0) {
+        setInput(extractCommonPrefix(commandSuggestions));
+      }
+      if (noteSuggestions.length > 0) {
+        const command = input.substring(0, input.indexOf(' ') + 1);
+        const note = noteSuggestions[0].content;
+        setInput(command + note);
+      }
+    } 
     if (e.key === "Enter") {
       const input = (e.target as HTMLInputElement).value; // Cast e.target
       if (input) {
-        // Search notes if first two characters are spaces
-        if (input.startsWith(' ')) {
+        // Command
+        if (input.startsWith('/open ')) {
+          setEditing(noteSuggestions[noteSuggestions.length-1]);
+          setNoteSuggestions([]);
+          setCommandSuggestions([]);
+        }
+        else if (input.startsWith(' ')) {
+          // Search notes if first two characters are spaces
           await handleAddNote('user', input.trim());
           handleChat(input.trim());
+          setEditing(null); // Close note editor
         } else {
           handleAddNote('user', input);
+          setEditing(null); // Close note editor
         }
-        setEditing(null); // Close note editor
-        (e.target as HTMLInputElement).value = ""; // Clear the input field
+        //(e.target as HTMLInputElement).value = ""; // Clear the input field
+        setInput("");
       }
     }
   };  
@@ -180,9 +236,11 @@ export function MainPage() {
     );
   };
 
+  const [input, setInput] = useState('');
+
   return (
-    <div className='flex justify-start items-start w-full bg-blue-500'>
-      <div style={sidePanelStyle} className="flex flex-col h-full">
+    <div className='flex justify-start items-start w-full'>
+      <div style={sidePanelStyle} className="flex flex-col h-full w-full">
       <div 
         ref={containerRef}
         className="pt-3 pb-5 flex-grow overflow-auto flex flex-col scrollbar scrollbar-thumb-blue-500 scrollbar-track-gray-300">
@@ -190,22 +248,48 @@ export function MainPage() {
           <NoteEdit content={editing.content} onChange={(e) => {handleUpdateNote(editing.id, e.target.value)}} close={() => {setEditing(null)}}/> : 
           <NoteChat messages={messages} onNoteClick={(note) => {setEditing(note)}}/>}
       </div>
+      {
+        noteSuggestions.length > 0 || commandSuggestions.length > 0 ? 
+        <div className='w-full absolute bottom-0 left-0 p-3 pb-12'>
+          <div className='flex flex-col rounded-lg overflow-hidden' style={{ backgroundColor: "#2f2f2f"}}>
+            {noteSuggestions.map(note => <Suggestion text={note.content} onClick={() => {
+              setEditing(note);
+              setNoteSuggestions([]);
+              setInput('');
+            }}/>)}
+            {commandSuggestions.map(command => <Suggestion text={command} onClick={() => {
+              // Only keep the command part
+              setInput(command.substring(0, command.indexOf(' ')+1));
+              setCommandSuggestions([]);
+            }}/>)}
+            <input 
+              className='w-full bg-transparent h-12 rounded-b-lg focus:outline-none p-3'
+              value={input}
+              onKeyDown={handleKeyDown}
+              onChange={handleInputChange}
+              />
+          </div>
+        </div>
+        : null
+      }
       <div className="p-3 pt-0 pb-0">
         <input 
           className="h-12 flex-shrink-0 w-full rounded-lg focus:outline-none p-3"
           style={{backgroundColor: "#2f2f2f"}}
+          value={input}
           onKeyDown={handleKeyDown}
+          onChange={handleInputChange}
           />
         <div className='flex justify-end p-3'>
           {profilePicture ? 
-            <button 
-              className="h-6 w-6 rounded-full cursor-pointer bg-cover bg-center" 
+            <div
+              className="h-5 w-5 rounded-full cursor-pointer bg-cover bg-center" 
               style={{backgroundImage: `url(${profilePicture})`}}
               onClick={handleOpenOnboarding}
               />
             :
             <FaRegUserCircle 
-              className="h-6 w-6 rounded-full cursor-pointer" 
+              className="h-5 w-5 rounded-full cursor-pointer" 
               onClick={handleOpenOnboarding}
             />
           }
@@ -214,6 +298,16 @@ export function MainPage() {
     </div>
     </div>
   );
+}
+
+const Suggestion = ({text, onClick}: {text: string, onClick: () => void}) => {
+  return (
+    <div 
+      className='p-2 pl-3 pr-3 suggestion cursor-pointer' 
+      onClick={onClick}>
+      {text}
+    </div>
+  )
 }
 
 type MessageProps = {
