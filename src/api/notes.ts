@@ -31,7 +31,7 @@ export async function fetchNotes() {
     const { data: notes, error: notesError } = await supabase
         .from('notes')
         .select('*')
-        .eq('user', userId)
+        .eq('user_id', userId)
         .order('created_at', { ascending: true });
 
     if (notesError) throw notesError;
@@ -52,7 +52,7 @@ export async function addNote({ role, content, embedding }: {
     try {
         const { data: note, error: noteError } = await supabase
             .from('notes')
-            .insert({ role, content, embedding, user: userId });
+            .insert({ role, content, embedding, user_id: userId });
         if (noteError || !note) throw noteError;
         return note[0];
     } catch (e) {
@@ -71,7 +71,7 @@ export async function updateNote(id: string, { content }: { content: string; }) 
         .from('notes')
         .update({ content })
         .eq('id', id)
-        .eq('user', userId); // Ensures the note belongs to the user
+        .eq('user_id', userId); // Ensures the note belongs to the user
 
     if (updateError || !updatedNote) throw updateError;
     return updatedNote[0];
@@ -88,7 +88,7 @@ export async function deleteNote(id: string) {
         .from('notes')
         .delete()
         .eq('id', id)
-        .eq('user', userId);
+        .eq('user_id', userId);
 
     if (deleteError) throw deleteError;
     return deletedNote;
@@ -103,7 +103,7 @@ export async function searchNotes(query: string) {
 
     const { data: searchResults, error: searchError } = await supabase.rpc('search_notes', {
         search_text: query,
-        user: userId, // Assuming the RPC function is modified to filter by user
+        user_id: userId, // Assuming the RPC function is modified to filter by user
     });
 
     if (searchError) throw searchError;
