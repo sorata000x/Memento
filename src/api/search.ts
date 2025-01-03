@@ -39,7 +39,7 @@ export async function hybridSearch(
   const { data: searchData, error: searchError } = await supabase.rpc('hybrid_search', {
       search_text: query,
       query_embedding: embedding,
-      user_id: userId
+      t_user_id: userId
   });
   if (searchError) throw searchError;
   return searchData;
