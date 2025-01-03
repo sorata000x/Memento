@@ -75,3 +75,17 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+.markdown * {
+  all: unset;
+  display: revert; /* Reset Tailwind's base styles */
+}
+
+.markdown ul {
+  margin-left: 1.1rem;
+}
+
+.markdown ol {
+  list-style-type: decimal;
+  margin-left: 1.2rem;
+}

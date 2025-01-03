@@ -9,6 +9,9 @@ import { FaRegUserCircle } from "react-icons/fa";
 import { supabase } from '../lib/supabase';
 import { User } from '@supabase/supabase-js';
 import '../App.css';
+import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
+import Markdown from 'react-markdown';
 
 export type Message = {
   id: string;
@@ -19,7 +22,15 @@ export type Message = {
 
 export function MainPage() {
   const [editing, setEditing] = useState<Message | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>([{
+    id: '1',
+    content: `hi
+    \n  - 1
+    \n  - 2
+    \n  - 3`,
+    created_at: '1',
+    role: 'user'
+  }]);
   const [user, setUser] = useState<User | null>(null);
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
 
@@ -333,8 +344,10 @@ const AssistantMessage = ({content}: MessageProps) => {
 
 const UserMessage = ({content, onClick}: {content: string, onClick: () => void}) => {
   return (
-    <div className="p-4 pt-2 pb-2 w-full user-message cursor-pointer" onClick={onClick}>
-      <ReactMarkdown>{content}</ReactMarkdown>
+    <div className="markdown p-4 pt-2 pb-2 w-full user-message cursor-pointer" onClick={onClick}>
+      <ReactMarkdown
+        
+      >{content}</ReactMarkdown>
     </div>
   )
 }
