@@ -192,8 +192,9 @@ export function MainPage() {
   useEffect(() => {
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN') {
+        if(!session?.user) return;
         console.log('User signed in:', session?.user);
-        setUser(session?.user || null);
+        setUser(session?.user);
       }
     });
     
@@ -224,7 +225,9 @@ export function MainPage() {
     return () => window.removeEventListener('message', handleMessage);
   }, []);
 
-  const handleOpenOnboarding = () => {
+  const handleOpenOnboarding: React.MouseEventHandler = (e) => {
+    e.preventDefault();
+
     // Define the URL of the onboarding page
     const onboardingURL = chrome.runtime.getURL("onboarding.html");
 
@@ -250,7 +253,7 @@ export function MainPage() {
       </div>
       {
         noteSuggestions.length > 0 || commandSuggestions.length > 0 ? 
-        <div className='w-full absolute bottom-0 left-0 p-3 pb-12'>
+        <div className='w-full absolute bottom-0 left-0 p-3 pb-11'>
           <div className='flex flex-col rounded-lg overflow-hidden' style={{ backgroundColor: "#2f2f2f"}}>
             {noteSuggestions.map(note => <Suggestion text={note.content} onClick={() => {
               setEditing(note);
