@@ -9,9 +9,6 @@ import { FaRegUserCircle } from "react-icons/fa";
 import { supabase } from '../lib/supabase';
 import { User } from '@supabase/supabase-js';
 import '../App.css';
-import remarkGfm from 'remark-gfm';
-import rehypeRaw from 'rehype-raw';
-import Markdown from 'react-markdown';
 
 export type Message = {
   id: string;
