@@ -30,26 +30,31 @@ const OnboardingPage = () => {
       return;
     }
   
-    const { data: session, error: sessionError } = await supabase.auth.getSession();
+    // Session will be handled in the auth listener
+  };
   
-    if (sessionError) {
-      console.error('Error fetching session:', sessionError.message);
-    } else {
-      console.log('User session:', session);
-      if (session?.session?.user) {
-        console.log('User signed in:', session.session.user);
-      } else {
-        console.log('User not found after sign-in.');
+  useEffect(() => {
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN') {
+        console.log('User signed in:', session?.user);
+      } else if (event === 'SIGNED_OUT') {
+        console.log('User signed out');
       }
-    }
-  };  
+    });
+  
+    return () => {
+      // Correctly access the subscription from data and unsubscribe
+      data.subscription.unsubscribe();
+    };
+  }, []);  
 
   useEffect(() => {
     const handleSignup = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
+        const extensionId = chrome.runtime.id;
         // Redirect back to the extension's sidebar with query parameters
-        window.location.href = 'chrome-extension://jnmhkmbcddpojmajfmakodojcjimjffm/index.html?status=signed_in';
+        window.location.href = `chrome-extension://${extensionId}/index.html?status=signed_in`;
       }
     };
 

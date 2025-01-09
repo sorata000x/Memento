@@ -9,6 +9,7 @@ import { FaRegUserCircle } from "react-icons/fa";
 import { supabase } from '../lib/supabase';
 import { User } from '@supabase/supabase-js';
 import '../App.css';
+import { debounce } from 'lodash';
 
 export type Message = {
   id: string;
@@ -19,15 +20,7 @@ export type Message = {
 
 export function MainPage() {
   const [editing, setEditing] = useState<Message | null>(null);
-  const [messages, setMessages] = useState<Message[]>([{
-    id: '1',
-    content: `hi
-    \n  - 1
-    \n  - 2
-    \n  - 3`,
-    created_at: '1',
-    role: 'user'
-  }]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [user, setUser] = useState<User | null>(null);
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
 
@@ -78,12 +71,24 @@ export function MainPage() {
     });
   }
 
+  const debouncedChange = useRef(
+    debounce((id: string, content: string) => {
+      updateNote(id, {content});
+    }, 300) // 300ms debounce delay
+  ).current;
+
+  useEffect(() => {
+    return () => {
+      debouncedChange.cancel(); // Cleanup debounce on unmount
+    };
+  }, []);
+
   async function handleUpdateNote(id: string, content: string) {
     const newMessages = messages.map((m) =>
       m.id === id ? { ...m, content: content } : m
     );
     setMessages(newMessages);
-    await updateNote(id, {content});
+    debouncedChange(id, content);
   }
 
   /* async function updateNote(id: string, content: string) {
@@ -383,7 +388,8 @@ const NoteEdit = ({content, onChange, close}: {content: string, onChange: (e: Re
         ref={textareaRef}
         value={value}
         onChange={(e) => {
-          setValue(e.target.value);
+          const updatedValue = e.target.value;
+          setValue(updatedValue);
           onChange(e);
         }}
         placeholder='tesrt'
