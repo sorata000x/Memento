@@ -20,7 +20,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === "install") {
     // Open the onboarding page in a new tab
-    chrome.tabs.create({ url: "onboarding.html" });
+    chrome.tabs.create({ url: "https://www.memento-note.com/onboarding" });
   }
 });
   
