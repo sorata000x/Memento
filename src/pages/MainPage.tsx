@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { addNote, fetchNotes, updateNote } from '../api/notes';
+import { addNote, fetchNotes, updateNote, upsertNote } from '../api/notes';
 import {v4 as uuid} from 'uuid';
 import { hybridSearch, searchNotesByPrefix } from '../api/search';
 import generateEmbedding, { chatWithNotes } from '../api/openai';
@@ -9,13 +9,14 @@ import { FaRegUserCircle } from "react-icons/fa";
 import { supabase } from '../lib/supabase';
 import { User } from '@supabase/supabase-js';
 import '../App.css';
-import { debounce } from 'lodash';
 
 export type Message = {
   id: string;
   content: string;
   created_at: string; // ISO date string
   role: string;
+  last_updated: string;
+  embedding: number[];
 };
 
 export function MainPage() {
@@ -53,6 +54,7 @@ export function MainPage() {
   async function handleAddNote(role: string, content: string) {
     const id = uuid();
     const created_at = new Date().toISOString();
+    const last_updated = new Date().toISOString();
     const embedding = await generateEmbedding(content);
     setMessages((prevMessages) => [
       ...prevMessages,
@@ -62,6 +64,7 @@ export function MainPage() {
         created_at,
         embedding,
         role,
+        last_updated
       },
     ]);
     await addNote({
@@ -71,24 +74,73 @@ export function MainPage() {
     });
   }
 
-  const debouncedChange = useRef(
-    debounce((id: string, content: string) => {
-      updateNote(id, {content});
-    }, 300) // 300ms debounce delay
-  ).current;
+  const getNotesFromLocalStorage = (): Message[] => {
+    const notes = localStorage.getItem("notes");
+    return notes ? JSON.parse(notes) : [];
+  };
+
+  const saveToLocalStorage = (notes: Message[]) => {
+    localStorage.setItem("notes", JSON.stringify(notes));
+  };
+
+  // * Notes are being stored both in local storage and supabase.
+  // * To enable offline note taking as well as preventing data lost
+  // * before being stored in supabase.
+  // * So everytime app start will need to sync notes to the newest version.
+  const syncNotes = async () => {
+    // Load notes from local storage and Supabase
+    const localNotes = getNotesFromLocalStorage();
+    const supabaseNotes = await fetchNotes();
+    
+    // Create a map for easier comparison
+    const localMap = new Map(localNotes.map(note => [note.id, note]));
+    const supabaseMap = new Map(supabaseNotes.map(note => [note.id, note]));
+    
+    const updatedLocalNotes: Message[] = [];
+
+    // Compare and synchronize
+    for (const [id, localNote] of localMap) {
+      const supabaseNote = supabaseMap.get(id);
+
+      if (!supabaseNote || new Date(localNote.last_updated) > new Date(supabaseNote.last_updated)) {
+        // Local note is newer or does not exist in Supabase
+        // Update or insert to supabase
+        upsertNote({id: localNote.id, content: localNote.content, role: localNote.role, embedding: localNote.embedding});
+      } else if (new Date(localNote.last_updated) < new Date(supabaseNote.last_updated)) {
+        // Supabase note is newer
+        updatedLocalNotes.push(supabaseNote);
+      }
+    }
+
+    // Handle notes that are only in Supabase
+    for (const [id, supabaseNote] of supabaseMap) {
+      if (!localMap.has(id)) {
+        updatedLocalNotes.push(supabaseNote);
+      }
+    }
+
+    // Save updates to local storage
+    if (updatedLocalNotes.length > 0) {
+      saveToLocalStorage([...localNotes, ...updatedLocalNotes]);
+    }
+  }
 
   useEffect(() => {
-    return () => {
-      debouncedChange.cancel(); // Cleanup debounce on unmount
-    };
-  }, []);
+    syncNotes();
+  }, [])
 
-  async function handleUpdateNote(id: string, content: string) {
+  async function handleUpdateNote(id: string, content: string, embedding: number[]) {
+    // Update state
     const newMessages = messages.map((m) =>
       m.id === id ? { ...m, content: content } : m
     );
     setMessages(newMessages);
-    debouncedChange(id, content);
+    // Store in local storage to prevent data lost
+    const storedData = localStorage.getItem("pendingNotes");
+    const pendingNotes = storedData ? JSON.parse(storedData) : [];
+    pendingNotes.push({id, role: "user", content, embedding});
+    // Store in supabase
+    updateNote(id, content, embedding);
   }
 
   /* async function updateNote(id: string, content: string) {
@@ -261,7 +313,11 @@ export function MainPage() {
         ref={containerRef}
         className="pt-3 pb-5 flex-grow overflow-auto flex flex-col scrollbar scrollbar-thumb-blue-500 scrollbar-track-gray-300">
         {editing ? 
-          <NoteEdit content={editing.content} onChange={(e) => {handleUpdateNote(editing.id, e.target.value)}} close={() => {setEditing(null)}}/> : 
+          <NoteEdit content={editing.content} onChange={async (e) => {
+            const value = e.target.value;
+            const embedding = await generateEmbedding(value);
+            handleUpdateNote(editing.id, value, embedding);
+          }} close={() => {setEditing(null)}}/> : 
           <NoteChat messages={messages} onNoteClick={(note) => {setEditing(note)}}/>}
       </div>
       {
