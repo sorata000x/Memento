@@ -4,7 +4,7 @@ import { Message } from "../pages/MainPage";
 export interface Note {
   id: string;
   content: string;
-  created_at: string;
+  last_updated: string;
 }
 
 /**
@@ -55,7 +55,7 @@ BEGIN
         -- Combined score: weighted average of text match and semantic similarity
         (0.7 * (1 - (n.embedding <=> query_embedding))) +  -- Semantic similarity weight
         (0.3 * CASE WHEN n.content ILIKE '%' || search_text || '%' THEN 1 ELSE 0 END) AS similarity,
-        n.created_at
+        n.last_updated
     FROM notes n
     WHERE
         n.user_id = user_id -- Ensure only notes of the specified user are searched

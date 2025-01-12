@@ -22,13 +22,13 @@ async function generateEmbedding(content: string) {
 type Note = {
   id: string,
   content: string,
-  created_at: string;
+  last_updated: string;
 }
 
 export async function chatWithNotes(input: string, notes: Note[]) {
   try {
     // Combine notes into a contextual string
-    const context = notes.map(note => `${note.content} (date: ${note.created_at})`).join('\n\n');
+    const context = notes.map(note => `${note.content} (date: ${note.last_updated})`).join('\n\n');
 
     // Prepare the messages for the chat
     const messages: ChatCompletionMessageParam[] = [

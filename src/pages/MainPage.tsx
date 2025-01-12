@@ -9,6 +9,7 @@ import { FaRegUserCircle } from "react-icons/fa";
 import { supabase } from '../lib/supabase';
 import { User } from '@supabase/supabase-js';
 import '../App.css';
+import icon from "../assets/memento-icon.png";
 
 export type Message = {
   id: string;
@@ -406,13 +407,9 @@ type MessageProps = {
 
 const AssistantMessage = ({content}: MessageProps) => {
   return (
-    <div className='flex'>
-      <div className='w-2'>
-        <div style={{ width: "4px", height: "100%", backgroundColor: "#525252"}} />
-      </div>
-      <div className="p-2 pt-2 pb-2 w-full">
-        <ReactMarkdown>{content}</ReactMarkdown>
-      </div>
+    <div className="flex py-2 px-4 w-ful" style={{backgroundColor: "#191919"}}>
+      <img height={14} width={14} className='mr-2 mt-[0.2rem] flex-shrink-0' style={{ width: '14px', height: '14px' }} src={icon} alt="icon"/>
+      <ReactMarkdown>{content}</ReactMarkdown>
     </div>
   )
 }
@@ -427,7 +424,7 @@ const UserMessage = ({note, onClick}: {note: Message, onClick: () => void}) => {
   }).format(date);
   */
   return (
-    <div className="p-4 pt-2 pb-2 w-full user-message cursor-pointer" onClick={onClick}>
+    <div className="p-4 pt-2 pb-2 w-full user-message cursor-pointer flex" onClick={onClick}>
       <ReactMarkdown className="markdown">{note.content}</ReactMarkdown>
       {/*<p className='text-end pt-1 text-[#565656]' style={{fontSize: "10pt"}}>{formattedDate}</p> */}
     </div>
