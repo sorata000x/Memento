@@ -417,26 +417,62 @@ const AssistantMessage = ({content}: MessageProps) => {
   )
 }
 
-const UserMessage = ({content, onClick}: {content: string, onClick: () => void}) => {
+const UserMessage = ({note, onClick}: {note: Message, onClick: () => void}) => {
+  /*
+  const date = new Date(note.last_updated);
+  // Use Intl.DateTimeFormat to format the date
+  const formattedDate = new Intl.DateTimeFormat("en-US", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(date);
+  */
   return (
-    <div className="markdown p-4 pt-2 pb-2 w-full user-message cursor-pointer" onClick={onClick}>
-      <ReactMarkdown
-        
-      >{content}</ReactMarkdown>
+    <div className="p-4 pt-2 pb-2 w-full user-message cursor-pointer" onClick={onClick}>
+      <ReactMarkdown className="markdown">{note.content}</ReactMarkdown>
+      {/*<p className='text-end pt-1 text-[#565656]' style={{fontSize: "10pt"}}>{formattedDate}</p> */}
     </div>
   )
 }
 
+const ChatDateDivider = ({ date }: { date: string}) => {
+  return (
+    <div className="flex items-center w-full my-1 px-2">
+      {/* Horizontal line on the left */}
+      <div className="flex-grow border-t border-[#414141]"></div>
+      
+      {/* Date in the middle */}
+      <span className="px-3 text-[#818181] font-medium" style={{fontSize: "9pt"}}>{date}</span>
+      
+      {/* Horizontal line on the right */}
+      <div className="flex-grow border-t border-[#414141]"></div>
+    </div>
+  );
+};
+
 const NoteChat = ({messages, onNoteClick}: {messages: Message[], onNoteClick: (m: Message) => void}) => {
+  let last_date: string;
   return <>
     {
       messages.map((m) => {
+        const components = [];
+        const date = new Date(m.last_updated);
+        // Format the date
+        const formattedDate = new Intl.DateTimeFormat("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        }).format(date);
+        if(!last_date || last_date !== formattedDate) {
+          last_date = formattedDate;
+          components.push(<ChatDateDivider date={last_date} />)
+        }
         if (m.role == 'user') {
-          return <UserMessage key={uuid()} content={m.content} onClick={() => onNoteClick(m)}/>
+          components.push(<UserMessage key={uuid()} note={m} onClick={() => onNoteClick(m)}/>)
         } 
         if (m.role == 'assistant') {
-          return <AssistantMessage key={uuid()} content={m.content} />
+          components.push(<AssistantMessage key={uuid()} content={m.content} />)
         }
+        return components;
       })
     }
   </>
