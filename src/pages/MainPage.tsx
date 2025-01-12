@@ -337,18 +337,20 @@ export function MainPage() {
       </div>
       {
         noteSuggestions.length > 0 || commandSuggestions.length > 0 ? 
-        <div className='w-full absolute bottom-0 left-0 p-3 pb-11'>
-          <div className='flex flex-col rounded-lg overflow-hidden' style={{ backgroundColor: "#2f2f2f"}}>
-            {noteSuggestions.map(note => <Suggestion text={note.content} onClick={() => {
-              setEditing(note);
-              setNoteSuggestions([]);
-              setInput('');
-            }}/>)}
-            {commandSuggestions.map(command => <Suggestion text={command} onClick={() => {
-              // Only keep the command part
-              setInput(command.substring(0, command.indexOf(' ')+1));
-              setCommandSuggestions([]);
-            }}/>)}
+        <div className='w-full absolute bottom-[2rem] left-0 p-3 overflow-hidden'>
+          <div className='flex flex-col rounded-lg' style={{ backgroundColor: "#2f2f2f"}}>
+            <div className='flex flex-col rounded-lg overflow-scroll max-h-[calc(100vh-10rem)]'>
+              {noteSuggestions.map(note => <Suggestion text={note.content} onClick={() => {
+                setEditing(note);
+                setNoteSuggestions([]);
+                setInput('');
+              }}/>)}
+              {commandSuggestions.map(command => <Suggestion text={command} onClick={() => {
+                // Only keep the command part
+                setInput(command.substring(0, command.indexOf(' ')+1));
+                setCommandSuggestions([]);
+              }}/>)}
+            </div>
             <input 
               className='w-full bg-transparent h-12 rounded-b-lg focus:outline-none p-3'
               value={input}
