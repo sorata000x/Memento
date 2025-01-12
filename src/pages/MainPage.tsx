@@ -200,8 +200,12 @@ export function MainPage() {
     const commands = [
       '/open <note-name>'
     ]
-    if (input.startsWith('/open ') && input.length >= 7) {
+    if (input.startsWith('/open ') && input.length >= 6) {
       const target = input.substring(6);
+      if(target.length === 0) {
+        setNoteSuggestions([]);
+        return;
+      }
       const matchedNotes = await searchNotesByPrefix(target);
       setNoteSuggestions(matchedNotes);
       setCommandSuggestions([]);
