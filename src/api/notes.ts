@@ -133,7 +133,7 @@ export async function updateNote(id: string, content: string, embedding: number[
 
     const { data: updatedNote, error: updateError } = await supabase
         .from('notes')
-        .update({ content, embedding })
+        .update({ content, embedding, last_updated: new Date().toISOString() })
         .eq('id', id)
         .eq('user_id', userId); // Ensures the note belongs to the user
 
@@ -162,7 +162,7 @@ export async function upsertNote({
         // Try updating the note
         const { data: updatedNote, error: updateError } = await supabase
           .from('notes')
-          .update({ content, role, embedding })
+          .update({ content, role, embedding, last_updated: new Date().toISOString() })
           .eq('id', id)
           .eq('user_id', userId)
           .select(); // Ensures the data returned is queryable
