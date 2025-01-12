@@ -11,7 +11,6 @@ export const addUserToDatabase = async (user: User) => {
     console.log(`user.id: ${user.id}`)
       const { data, error } = await supabase.from('users').upsert([{
         id: user.id, // Use the user's unique ID
-        created_at: new Date().toISOString(), // Use the current timestamp
         last_updated: new Date().toISOString(),
         email: user.email, // User's email
         name: user.user_metadata?.full_name || null, // Optional: Use the user's name from metadata
@@ -125,7 +124,7 @@ export async function addNote({ role, content, embedding }: {
 }
 
 // Update note
-export async function updateNote(id: string, content: string, embedding: number[]) {
+export async function updateNote(id: string, content: string, embedding: number[], last_updated: string) {
     const { data, error } = await supabase.auth.getUser();
     const userId = data?.user?.id;
 
@@ -133,7 +132,7 @@ export async function updateNote(id: string, content: string, embedding: number[
 
     const { data: updatedNote, error: updateError } = await supabase
         .from('notes')
-        .update({ content, embedding, last_updated: new Date().toISOString() })
+        .update({ content, embedding, last_updated })
         .eq('id', id)
         .eq('user_id', userId); // Ensures the note belongs to the user
 
@@ -146,11 +145,13 @@ export async function upsertNote({
     role,
     content,
     embedding,
+    last_updated
 }: {
     id?: string; // Optional, if not provided, it will add a new note
     role: string;
     content: string;
     embedding: number[];
+    last_updated: string;
 }) {
     const { data, error } = await supabase.auth.getUser();
     const userId = data?.user?.id;
@@ -162,7 +163,7 @@ export async function upsertNote({
         // Try updating the note
         const { data: updatedNote, error: updateError } = await supabase
           .from('notes')
-          .update({ content, role, embedding, last_updated: new Date().toISOString() })
+          .update({ content, role, embedding, last_updated })
           .eq('id', id)
           .eq('user_id', userId)
           .select(); // Ensures the data returned is queryable
@@ -178,7 +179,7 @@ export async function upsertNote({
       // If no id is provided or the update didn't find a matching note, insert a new note
       const { data: newNote, error: insertError } = await supabase
         .from('notes')
-        .insert({ role, content, embedding, user_id: userId })
+        .insert({ role, content, embedding, user_id: userId, last_updated })
         .select();
   
       if (insertError) throw insertError;

@@ -13,7 +13,6 @@ import '../App.css';
 export type Message = {
   id: string;
   content: string;
-  created_at: string; // ISO date string
   role: string;
   last_updated: string;
   embedding: number[];
@@ -53,7 +52,6 @@ export function MainPage() {
 
   async function handleAddNote(role: string, content: string) {
     const id = uuid();
-    const created_at = new Date().toISOString();
     const last_updated = new Date().toISOString();
     const embedding = await generateEmbedding(content);
     setMessages((prevMessages) => [
@@ -61,12 +59,16 @@ export function MainPage() {
       {
         id,
         content,
-        created_at,
         embedding,
         role,
         last_updated
       },
     ]);
+    // Store in local storage to prevent data lost
+    const storedData = localStorage.getItem("notes");
+    const localNotes = storedData ? JSON.parse(storedData) : [];
+    localNotes.push({id, role: "user", content, embedding, last_updated});
+    // Store in database
     await addNote({
       role,
       content,
@@ -105,7 +107,7 @@ export function MainPage() {
       if (!supabaseNote || new Date(localNote.last_updated) > new Date(supabaseNote.last_updated)) {
         // Local note is newer or does not exist in Supabase
         // Update or insert to supabase
-        upsertNote({id: localNote.id, content: localNote.content, role: localNote.role, embedding: localNote.embedding});
+        upsertNote({id: localNote.id, content: localNote.content, role: localNote.role, embedding: localNote.embedding, last_updated: localNote.last_updated});
       } else if (new Date(localNote.last_updated) < new Date(supabaseNote.last_updated)) {
         // Supabase note is newer
         updatedLocalNotes.push(supabaseNote);
@@ -130,17 +132,26 @@ export function MainPage() {
   }, [])
 
   async function handleUpdateNote(id: string, content: string, embedding: number[]) {
+    const updateTime = new Date().toISOString();
     // Update state
-    const newMessages = messages.map((m) =>
-      m.id === id ? { ...m, content: content } : m
-    );
+    const newMessages = messages
+      .map((m) => (m.id === id ? { ...m, content: content, last_updated: updateTime } : m)) // Update the element
+      .filter((m) => m.id !== id); // Remove the updated element from its current position
+
+    const updatedMessage = messages.find((m) => m.id === id); // Find the updated element
+    if (updatedMessage) {
+      updatedMessage.content = content;
+      updatedMessage.last_updated = updateTime;
+      newMessages.push(updatedMessage); // Move the updated element to the end
+    }
+
     setMessages(newMessages);
     // Store in local storage to prevent data lost
     const storedData = localStorage.getItem("pendingNotes");
     const pendingNotes = storedData ? JSON.parse(storedData) : [];
-    pendingNotes.push({id, role: "user", content, embedding});
+    pendingNotes.push({id, role: "user", content, embedding, last_updated: updateTime});
     // Store in supabase
-    updateNote(id, content, embedding);
+    updateNote(id, content, embedding, updateTime);
   }
 
   /* async function updateNote(id: string, content: string) {
