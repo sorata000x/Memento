@@ -1,50 +1,32 @@
-# React + TypeScript + Vite
+# Memento
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Memento is a simplistic and intuitive AI-powered note taking app.
 
-Currently, two official plugins are available:
+## Philosophy
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Feel as natural as talking to a real human assistant.
+- You will never have to organize your notes -- just ask your assistant.
 
-## Expanding the ESLint configuration
+## Key Features
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+- Simplistic Note Taking in Chrome Browser: Record your thoughts or any notes in an instant.
+- Semantic RAG: Chat with AI assistant based on the notes that are semantically similar to your query (we are planning to improve this for more tailored responses).
+- LLM Assistant: Currently using OpenAI GPT-4o mini but planninng to support more models in the future.
 
-- Configure the top-level `parserOptions` property like this:
+## Get Started
 
-```js
-export default tseslint.config({
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+### Prerequisites 
 
-- Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
-- Optionally add `...tseslint.configs.stylisticTypeChecked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and update the config:
+Ensure you have node installed.
 
-```js
-// eslint.config.js
-import react from 'eslint-plugin-react'
+Install dependence packages
 
-export default tseslint.config({
-  // Set the react version
-  settings: { react: { version: '18.3' } },
-  plugins: {
-    // Add the react plugin
-    react,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended rules
-    ...react.configs.recommended.rules,
-    ...react.configs['jsx-runtime'].rules,
-  },
-})
-```
+`npm install`
+
+Run locally
+
+`npm run dev`
+
+Build Project
+
+`npm run build`
