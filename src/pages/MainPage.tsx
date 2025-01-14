@@ -13,7 +13,7 @@ import icon from "../assets/memento-icon.png";
 import { MdDeleteForever } from "react-icons/md";
 import { IoIosMore } from "react-icons/io";
 
-export type Message = {
+export type Note = {
   id: string;
   content: string;
   role: string;
@@ -22,8 +22,8 @@ export type Message = {
 };
 
 export function MainPage() {
-  const [editing, setEditing] = useState<Message | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [editing, setEditing] = useState<Note | null>(null);
+  const [notes, setNotes] = useState<Note[]>([]);
   const [user, setUser] = useState<User | null>(null);
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
 
@@ -33,7 +33,7 @@ export function MainPage() {
   };
 
   const update = async () => {
-    setMessages(await fetchNotes());
+    setNotes(await fetchNotes());
     // User picture
     if (user) {
       const picture = user.user_metadata.avatar_url || user.user_metadata.picture;
@@ -51,14 +51,14 @@ export function MainPage() {
     if (containerRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight; // Scroll to the bottom
     }
-  }, [editing, messages])
+  }, [editing, notes])
 
   async function handleAddNote(role: string, content: string) {
     const id = uuid();
     const last_updated = new Date().toISOString();
     const embedding = await generateEmbedding(content);
-    setMessages((prevMessages) => [
-      ...prevMessages,
+    setNotes((prev) => [
+      ...prev,
       {
         id,
         content,
@@ -79,12 +79,12 @@ export function MainPage() {
     });
   }
 
-  const getNotesFromLocalStorage = (): Message[] => {
+  const getNotesFromLocalStorage = (): Note[] => {
     const notes = localStorage.getItem("notes");
     return notes ? JSON.parse(notes) : [];
   };
 
-  const saveToLocalStorage = (notes: Message[]) => {
+  const saveToLocalStorage = (notes: Note[]) => {
     localStorage.setItem("notes", JSON.stringify(notes));
   };
 
@@ -101,7 +101,7 @@ export function MainPage() {
     const localMap = new Map(localNotes.map(note => [note.id, note]));
     const supabaseMap = new Map(supabaseNotes.map(note => [note.id, note]));
     
-    const updatedLocalNotes: Message[] = [];
+    const updatedLocalNotes: Note[] = [];
 
     // Compare and synchronize
     for (const [id, localNote] of localMap) {
@@ -137,18 +137,18 @@ export function MainPage() {
   async function handleUpdateNote(id: string, content: string, embedding: number[]) {
     const updateTime = new Date().toISOString();
     // Update state
-    const newMessages = messages
-      .map((m) => (m.id === id ? { ...m, content: content, last_updated: updateTime } : m)) // Update the element
-      .filter((m) => m.id !== id); // Remove the updated element from its current position
+    const newNotes = notes
+      .map((n) => (n.id === id ? { ...n, content: content, last_updated: updateTime } : n)) // Update the element
+      .filter((n) => n.id !== id); // Remove the updated element from its current position
 
-    const updatedMessage = messages.find((m) => m.id === id); // Find the updated element
-    if (updatedMessage) {
-      updatedMessage.content = content;
-      updatedMessage.last_updated = updateTime;
-      newMessages.push(updatedMessage); // Move the updated element to the end
+    const updatedNote = notes.find((n) => n.id === id); // Find the updated element
+    if (updatedNote) {
+      updatedNote.content = content;
+      updatedNote.last_updated = updateTime;
+      newNotes.push(updatedNote); // Move the updated element to the end
     }
 
-    setMessages(newMessages);
+    setNotes(newNotes);
     // Store in local storage to prevent data lost
     const storedData = localStorage.getItem("notes");
     const storedNotes = storedData ? JSON.parse(storedData) : [];
@@ -194,7 +194,7 @@ export function MainPage() {
     handleAddNote('assistant', response)
   }
 
-  const [noteSuggestions, setNoteSuggestions] = useState<Message[]>([]);
+  const [noteSuggestions, setNoteSuggestions] = useState<Note[]>([]);
   const [commandSuggestions, setCommandSuggestions] = useState<string[]>([]);
 
   const handleInputChange: React.ChangeEventHandler<HTMLInputElement> = async (e) => {
@@ -296,7 +296,7 @@ export function MainPage() {
   }, []);
 
   useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
+    const handleNote = (event: MessageEvent) => {
       if (event.data?.status === 'signed_in') {
         console.log('User has signed up:', event.data.user);
         setUser(event.data.user || null);
@@ -304,8 +304,8 @@ export function MainPage() {
       }
     };
   
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
+    window.addEventListener('message', handleNote);
+    return () => window.removeEventListener('message', handleNote);
   }, []);
 
   const handleOpenOnboarding: React.MouseEventHandler = (e) => {
@@ -325,10 +325,10 @@ export function MainPage() {
   const [input, setInput] = useState('');
 
   const handleDeleteNote = (id: string) => {
-    const updatedMessages = messages.filter((m) => m.id !== id);
-    setMessages(updatedMessages);
+    const updatedNotes = notes.filter((n) => n.id !== id);
+    setNotes(updatedNotes);
     // Update local storage
-    localStorage.setItem("notes", JSON.stringify(updatedMessages));
+    localStorage.setItem("notes", JSON.stringify(updatedNotes));
     // Update supabase
     deleteNote(id);
   }
@@ -349,7 +349,7 @@ export function MainPage() {
               handleUpdateNote(editing.id, value, embedding);
             }} close={() => {setEditing(null)}}
             /> : 
-          <NoteChat messages={messages} onNoteClick={(note) => {setEditing(note)}}/>}
+          <NoteChat notes={notes} onNoteClick={(note) => {setEditing(note)}}/>}
       </div>
       {
         noteSuggestions.length > 0 || commandSuggestions.length > 0 ? 
@@ -415,12 +415,12 @@ const Suggestion = ({text, onClick}: {text: string, onClick: () => void}) => {
   )
 }
 
-type MessageProps = {
+type NoteProps = {
   key: string;
   content: string;
 };
 
-const AssistantMessage = ({content}: MessageProps) => {
+const AssistantNote = ({content}: NoteProps) => {
   return (
     <div className="flex py-2 px-4 w-ful" style={{backgroundColor: "#191919"}}>
       <img height={14} width={14} className='mr-2 mt-[0.2rem] flex-shrink-0' style={{ width: '14px', height: '14px' }} src={icon} alt="icon"/>
@@ -429,7 +429,7 @@ const AssistantMessage = ({content}: MessageProps) => {
   )
 }
 
-const UserMessage = ({note, onClick}: {note: Message, onClick: () => void}) => {
+const UserNote = ({note, onClick}: {note: Note, onClick: () => void}) => {
   /*
   const date = new Date(note.last_updated);
   // Use Intl.DateTimeFormat to format the date
@@ -439,7 +439,7 @@ const UserMessage = ({note, onClick}: {note: Message, onClick: () => void}) => {
   }).format(date);
   */
   return (
-    <div className="p-4 pt-2 pb-2 w-full user-message cursor-pointer flex" onClick={onClick}>
+    <div className="p-4 pt-2 pb-2 w-full user-Note cursor-pointer flex" onClick={onClick}>
       <ReactMarkdown className="markdown">{note.content}</ReactMarkdown>
       {/*<p className='text-end pt-1 text-[#565656]' style={{fontSize: "10pt"}}>{formattedDate}</p> */}
     </div>
@@ -461,13 +461,13 @@ const ChatDateDivider = ({ date }: { date: string}) => {
   );
 };
 
-const NoteChat = ({messages, onNoteClick}: {messages: Message[], onNoteClick: (m: Message) => void}) => {
+const NoteChat = ({notes, onNoteClick}: {notes: Note[], onNoteClick: (n: Note) => void}) => {
   let last_date: string;
   return <>
     {
-      messages.map((m) => {
+      notes.map((n) => {
         const components = [];
-        const date = new Date(m.last_updated);
+        const date = new Date(n.last_updated);
         // Format the date
         const formattedDate = new Intl.DateTimeFormat("en-US", {
           year: "numeric",
@@ -478,11 +478,11 @@ const NoteChat = ({messages, onNoteClick}: {messages: Message[], onNoteClick: (m
           last_date = formattedDate;
           components.push(<ChatDateDivider date={last_date} />)
         }
-        if (m.role == 'user') {
-          components.push(<UserMessage key={uuid()} note={m} onClick={() => onNoteClick(m)}/>)
+        if (n.role == 'user') {
+          components.push(<UserNote key={uuid()} note={n} onClick={() => onNoteClick(n)}/>)
         } 
-        if (m.role == 'assistant') {
-          components.push(<AssistantMessage key={uuid()} content={m.content} />)
+        if (n.role == 'assistant') {
+          components.push(<AssistantNote key={uuid()} content={n.content} />)
         }
         return components;
       })
