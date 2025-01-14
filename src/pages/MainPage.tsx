@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { addNote, fetchNotes, updateNote, upsertNote } from '../api/notes';
+import { addNote, deleteNote, fetchNotes, updateNote, upsertNote } from '../api/notes';
 import {v4 as uuid} from 'uuid';
 import { hybridSearch, searchNotesByPrefix } from '../api/search';
 import generateEmbedding, { chatWithNotes } from '../api/openai';
@@ -10,6 +10,8 @@ import { supabase } from '../lib/supabase';
 import { User } from '@supabase/supabase-js';
 import '../App.css';
 import icon from "../assets/memento-icon.png";
+import { MdDeleteForever } from "react-icons/md";
+import { IoIosMore } from "react-icons/io";
 
 export type Message = {
   id: string;
@@ -322,6 +324,15 @@ export function MainPage() {
 
   const [input, setInput] = useState('');
 
+  const handleDeleteNote = (id: string) => {
+    const updatedMessages = messages.filter((m) => m.id !== id);
+    setMessages(updatedMessages);
+    // Update local storage
+    localStorage.setItem("notes", JSON.stringify(updatedMessages));
+    // Update supabase
+    deleteNote(id);
+  }
+
   return (
     <div className='flex justify-start items-start w-full'>
       <div style={sidePanelStyle} className="flex flex-col h-full w-full">
@@ -329,11 +340,15 @@ export function MainPage() {
         ref={containerRef}
         className="pt-3 pb-5 flex-grow overflow-auto flex flex-col scrollbar scrollbar-thumb-blue-500 scrollbar-track-gray-300">
         {editing ? 
-          <NoteEdit content={editing.content} onChange={async (e) => {
-            const value = e.target.value;
-            const embedding = await generateEmbedding(value);
-            handleUpdateNote(editing.id, value, embedding);
-          }} close={() => {setEditing(null)}}/> : 
+          <NoteEdit 
+            content={editing.content} 
+            deleteNote={() => handleDeleteNote(editing.id)}
+            onChange={async (e) => {
+              const value = e.target.value;
+              const embedding = await generateEmbedding(value);
+              handleUpdateNote(editing.id, value, embedding);
+            }} close={() => {setEditing(null)}}
+            /> : 
           <NoteChat messages={messages} onNoteClick={(note) => {setEditing(note)}}/>}
       </div>
       {
@@ -475,9 +490,50 @@ const NoteChat = ({messages, onNoteClick}: {messages: Message[], onNoteClick: (m
   </>
 }
 
-const NoteEdit = ({content, onChange, close}: {content: string, onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void, close: () => void}) => {
+const MorePopUp = ({
+  deleteNote, 
+  closePopUp, 
+  closeEdit}: 
+  {
+    deleteNote: () => void, 
+    closePopUp: () => void
+    closeEdit: () => void}) => {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (ref.current && !ref.current.contains(event.target as Node)) {
+        closePopUp();
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+
+    // Cleanup the event listener
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [closePopUp]);
+
+  return <div ref={ref} className='flex flex-col absolute right-12 w-[10rem] bg-black p-1 rounded-md'>
+    <div
+      onClick={
+        () => {
+          deleteNote();
+          closeEdit();
+        }
+      } 
+      className='flex items-center justify-between hover:bg-[#212121] cursor-pointer rounded-sm py-1 px-2 text-red-500'>
+      <p>Delete Note</p>
+      <MdDeleteForever size={24}/>
+    </div>
+  </div>
+}
+
+const NoteEdit = ({content, deleteNote, onChange, close}: {content: string, deleteNote: () => void, onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void, close: () => void}) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [value, setValue] = useState<string>(content);
+  const [showMorePopUp, setShowMorePopUp] = useState<boolean>(false);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -489,7 +545,18 @@ const NoteEdit = ({content, onChange, close}: {content: string, onChange: (e: Re
   
   return (
     <div className='flex flex-col h-full'>
-      <IoIosArrowBack className='m-1 ml-3 mb-0 cursor-pointer' onClick={() => close()} size={22}/>
+      {showMorePopUp ? 
+        <MorePopUp 
+          deleteNote={deleteNote} 
+          closePopUp={()=>setShowMorePopUp(false)}
+          closeEdit={()=>close()}
+          /> : null}
+      <div className='flex item-center justify-between mx-3'>
+        <IoIosArrowBack className='m-1 mb-0 cursor-pointer' onClick={() => close()} size={22}/>
+        <IoIosMore 
+          onClick={() => setShowMorePopUp(true)}
+          className='cursor-pointer px-1 hover:bg-[#313131] rounded-md' size={33}/>
+      </div>
       <textarea
         ref={textareaRef}
         value={value}
