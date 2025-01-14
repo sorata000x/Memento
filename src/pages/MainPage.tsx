@@ -148,9 +148,9 @@ export function MainPage() {
 
     setMessages(newMessages);
     // Store in local storage to prevent data lost
-    const storedData = localStorage.getItem("pendingNotes");
-    const pendingNotes = storedData ? JSON.parse(storedData) : [];
-    pendingNotes.push({id, role: "user", content, embedding, last_updated: updateTime});
+    const storedData = localStorage.getItem("notes");
+    const storedNotes = storedData ? JSON.parse(storedData) : [];
+    storedNotes.push({id, role: "user", content, embedding, last_updated: updateTime});
     // Store in supabase
     updateNote(id, content, embedding, updateTime);
   }
