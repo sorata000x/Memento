@@ -10,7 +10,7 @@ import '../App.css';
 import { Note } from '../types';
 import NoteEdit from '../components/NoteEdit/NoteEdit';
 import NoteChat from '../components/NoteChat/NoteChat';
-import { Suggestion } from '../components/NoteChat/components';
+import { Suggestion, UserNote } from '../components/NoteChat/components';
 
 export function MainPage() {
   const [editing, setEditing] = useState<Note | null>(null);
@@ -273,74 +273,128 @@ export function MainPage() {
     }
   }, [editing, notes])
 
-  return (
-    <div className='flex justify-start items-start w-full'>
-      <div className="flex flex-col h-[100vh] w-full bg-[#212121]">
-      <div 
-        ref={containerRef}
-        className="pt-3 pb-5 flex-grow overflow-auto flex flex-col scrollbar scrollbar-thumb-blue-500 scrollbar-track-gray-300">
-        {editing ? 
-          <NoteEdit 
-            content={editing.content} 
-            deleteNote={() => handleDeleteNote(editing.id)}
-            onChange={async (e) => {
-              const value = e.target.value;
-              const embedding = await generateEmbedding(value);
-              handleUpdateNote(editing.id, value, embedding);
-            }} close={() => {setEditing(null)}}
-            /> : 
-          <NoteChat notes={notes} onNoteClick={(note) => {setEditing(note)}}/>}
+  const DeleteConfirmationPopup = ({note, onDelete, onCancel}: {note: Note, onDelete: () => void, onCancel: () => void}) => {
+    const ref = useRef<HTMLDivElement>(null);
+
+    console.log(`note: ${note}`)
+
+    useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+        if (ref.current && !ref.current.contains(event.target as Node)) {
+          onCancel();
+        }
+      };
+  
+      document.addEventListener('mousedown', handleClickOutside);
+  
+      // Cleanup the event listener
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }, [onCancel]);
+    
+    return <div ref={ref} className='flex items-center justify-center h-[100vh] w-[100vw] bg-black bg-opacity-50 absolute'>
+      <div className='flex flex-col w-[16rem] bg-[#212121] p-3 rounded-md'>
+        <h1 className='text-base font-semibold'>Delete Note</h1>
+        <p className='py-2'>Are you sure you want to delete this note?</p>
+        <div className='border border-[#515151] rounded-md my-3 mb-6'>
+          <UserNote note={note} />
+        </div>
+        <div className='grow'/>
+        <div className='flex justify-end font-semibold'>
+          <button onClick={()=>onCancel()} className='px-6 bg-transparent'>
+            Cancel
+          </button>
+          <button onClick={()=>onDelete()} className='px-4 py-1 m-0 bg-red-600 hover:bg-red-900'>
+            Delete
+          </button>
+        </div>
       </div>
-      {
-        noteSuggestions.length > 0 || commandSuggestions.length > 0 ? 
-        <div className='w-full absolute bottom-[2rem] left-0 p-3 overflow-hidden'>
-          <div className='flex flex-col rounded-lg' style={{ backgroundColor: "#2f2f2f"}}>
-            <div className='flex flex-col rounded-lg overflow-scroll max-h-[calc(100vh-10rem)]'>
-              {noteSuggestions.map(note => <Suggestion text={note.content} onClick={() => {
-                setEditing(note);
-                setNoteSuggestions([]);
-                setInput('');
-              }}/>)}
-              {commandSuggestions.map(command => <Suggestion text={command} onClick={() => {
-                // Only keep the command part
-                setInput(command.substring(0, command.indexOf(' ')+1));
-                setCommandSuggestions([]);
-              }}/>)}
+    </div>
+  }
+
+  const [deletingNote, setDeletingNote] = useState<Note|null>(null); // Delete confirmation note
+
+  return (
+    <>
+      { deletingNote !== null ? 
+        <DeleteConfirmationPopup 
+          note={deletingNote!} 
+          onDelete={()=>{
+            handleDeleteNote(deletingNote!.id);
+            setDeletingNote(null);
+            setEditing(null);
+          }}
+          onCancel={()=>setDeletingNote(null)}
+          /> : null }
+      <div className='flex justify-start items-start w-full'>
+        <div className="flex flex-col h-[100vh] w-full bg-[#212121]">
+        <div 
+          ref={containerRef}
+          className="pt-3 pb-5 flex-grow overflow-auto flex flex-col scrollbar scrollbar-thumb-blue-500 scrollbar-track-gray-300">
+          {editing ? 
+            <NoteEdit 
+              content={editing.content} 
+              confirmDelete={() => setDeletingNote(editing)}
+              onChange={async (e) => {
+                const value = e.target.value;
+                const embedding = await generateEmbedding(value);
+                handleUpdateNote(editing.id, value, embedding);
+              }} close={() => {setEditing(null)}}
+              /> : 
+            <NoteChat notes={notes} onNoteClick={(note) => {setEditing(note)}}/>}
+        </div>
+        {
+          noteSuggestions.length > 0 || commandSuggestions.length > 0 ? 
+          <div className='w-full absolute bottom-[2rem] left-0 p-3 overflow-hidden'>
+            <div className='flex flex-col rounded-lg' style={{ backgroundColor: "#2f2f2f"}}>
+              <div className='flex flex-col rounded-lg overflow-scroll max-h-[calc(100vh-10rem)]'>
+                {noteSuggestions.map(note => <Suggestion text={note.content} onClick={() => {
+                  setEditing(note);
+                  setNoteSuggestions([]);
+                  setInput('');
+                }}/>)}
+                {commandSuggestions.map(command => <Suggestion text={command} onClick={() => {
+                  // Only keep the command part
+                  setInput(command.substring(0, command.indexOf(' ')+1));
+                  setCommandSuggestions([]);
+                }}/>)}
+              </div>
+              <input 
+                className='w-full bg-transparent h-12 rounded-b-lg focus:outline-none p-3'
+                value={input}
+                onKeyDown={handleKeyDown}
+                onChange={handleInputChange}
+                />
             </div>
-            <input 
-              className='w-full bg-transparent h-12 rounded-b-lg focus:outline-none p-3'
-              value={input}
-              onKeyDown={handleKeyDown}
-              onChange={handleInputChange}
+          </div>
+          : null
+        }
+        <div className="p-3 pt-0 pb-0">
+          <input 
+            className="h-12 flex-shrink-0 w-full rounded-lg focus:outline-none p-3"
+            style={{backgroundColor: "#2f2f2f"}}
+            value={input}
+            onKeyDown={handleKeyDown}
+            onChange={handleInputChange}
+            />
+          <div className='flex justify-end p-3'>
+            {profilePicture ? 
+              <div
+                className="h-5 w-5 rounded-full cursor-pointer bg-cover bg-center" 
+                style={{backgroundImage: `url(${profilePicture})`}}
+                onClick={handleOpenOnboarding}
+                />
+              :
+              <FaRegUserCircle 
+                className="h-5 w-5 rounded-full cursor-pointer" 
+                onClick={handleOpenOnboarding}
               />
+            }
           </div>
         </div>
-        : null
-      }
-      <div className="p-3 pt-0 pb-0">
-        <input 
-          className="h-12 flex-shrink-0 w-full rounded-lg focus:outline-none p-3"
-          style={{backgroundColor: "#2f2f2f"}}
-          value={input}
-          onKeyDown={handleKeyDown}
-          onChange={handleInputChange}
-          />
-        <div className='flex justify-end p-3'>
-          {profilePicture ? 
-            <div
-              className="h-5 w-5 rounded-full cursor-pointer bg-cover bg-center" 
-              style={{backgroundImage: `url(${profilePicture})`}}
-              onClick={handleOpenOnboarding}
-              />
-            :
-            <FaRegUserCircle 
-              className="h-5 w-5 rounded-full cursor-pointer" 
-              onClick={handleOpenOnboarding}
-            />
-          }
-        </div>
       </div>
-    </div>
-    </div>
+      </div>
+    </>
   );
 }

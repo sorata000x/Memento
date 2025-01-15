@@ -89,3 +89,14 @@ button:focus-visible {
   list-style-type: decimal;
   margin-left: 1.2rem;
 }
+
+button {
+  outline: none; /* Removes focus outline */
+  border: none;  /* Removes border highlight */
+}
+
+button:hover,
+button:focus {
+  outline: none;
+  border: none;
+}

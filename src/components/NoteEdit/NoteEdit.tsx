@@ -3,7 +3,7 @@ import { MorePopUp } from "./components";
 import { IoIosArrowBack } from "react-icons/io";
 import { IoIosMore } from "react-icons/io";
 
-const NoteEdit = ({content, deleteNote, onChange, close}: {content: string, deleteNote: () => void, onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void, close: () => void}) => {
+const NoteEdit = ({content, confirmDelete, onChange, close}: {content: string, confirmDelete: () => void, onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void, close: () => void}) => {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [value, setValue] = useState<string>(content);
     const [showMorePopUp, setShowMorePopUp] = useState<boolean>(false);
@@ -20,7 +20,7 @@ const NoteEdit = ({content, deleteNote, onChange, close}: {content: string, dele
       <div className='flex flex-col h-full'>
         {showMorePopUp ? 
           <MorePopUp 
-            deleteNote={deleteNote} 
+            confirmDelete={confirmDelete} 
             closePopUp={()=>setShowMorePopUp(false)}
             closeEdit={()=>close()}
             /> : null}

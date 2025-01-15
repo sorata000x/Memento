@@ -2,11 +2,10 @@ import { useEffect, useRef } from "react";
 import { MdDeleteForever } from "react-icons/md";
 
 export const MorePopUp = ({
-    deleteNote, 
-    closePopUp, 
-    closeEdit}: 
+  confirmDelete, 
+    closePopUp}: 
     {
-      deleteNote: () => void, 
+      confirmDelete: () => void, 
       closePopUp: () => void
       closeEdit: () => void}) => {
     const ref = useRef<HTMLDivElement>(null);
@@ -30,8 +29,7 @@ export const MorePopUp = ({
       <div
         onClick={
           () => {
-            deleteNote();
-            closeEdit();
+            confirmDelete();
           }
         } 
         className='flex items-center justify-between hover:bg-[#212121] cursor-pointer rounded-sm py-1 px-2 text-red-500'>

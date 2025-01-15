@@ -12,7 +12,7 @@ export const Suggestion = ({text, onClick}: {text: string, onClick: () => void})
     )
 }
 
-export const UserNote = ({note, onClick}: {note: Note, onClick: () => void}) => {
+export const UserNote = ({note, onClick}: {note: Note, onClick?: () => void}) => {
     return (
       <div className="p-4 pt-2 pb-2 w-full user-Note cursor-pointer flex" onClick={onClick}>
         <ReactMarkdown className="markdown">{note.content}</ReactMarkdown>
