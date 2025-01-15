@@ -1,5 +1,5 @@
 import { supabase } from "../lib/supabase";
-import { Note } from "../pages/MainPage";
+import { Note } from "../types";
 
 /**
  * Function to search for notes that start with a specific substring.
