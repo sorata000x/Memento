@@ -1,18 +1,12 @@
 import { supabase } from "../lib/supabase";
-import { Message } from "../pages/MainPage";
-
-export interface Note {
-  id: string;
-  content: string;
-  last_updated: string;
-}
+import { Note } from "../pages/MainPage";
 
 /**
  * Function to search for notes that start with a specific substring.
  * @param {string} prefix - The substring to match at the start of note content.
- * @returns {Promise<Message[]>} - A promise that resolves to an array of matching notes.
+ * @returns {Promise<Note[]>} - A promise that resolves to an array of matching notes.
  */
-export async function searchNotesByPrefix(prefix: string): Promise<Message[]> {
+export async function searchNotesByPrefix(prefix: string): Promise<Note[]> {
   const { data, error } = await supabase.auth.getUser();
   const userId = data?.user?.id;
   if (error || !userId) throw new Error('User not authenticated');

@@ -3,35 +3,28 @@ import { addNote, deleteNote, fetchNotes, updateNote, upsertNote } from '../api/
 import {v4 as uuid} from 'uuid';
 import { hybridSearch, searchNotesByPrefix } from '../api/search';
 import generateEmbedding, { chatWithNotes } from '../api/openai';
-import ReactMarkdown from 'react-markdown';
-import { IoIosArrowBack } from "react-icons/io";
 import { FaRegUserCircle } from "react-icons/fa";
 import { supabase } from '../lib/supabase';
 import { User } from '@supabase/supabase-js';
 import '../App.css';
-import icon from "../assets/memento-icon.png";
-import { MdDeleteForever } from "react-icons/md";
-import { IoIosMore } from "react-icons/io";
-
-export type Note = {
-  id: string;
-  content: string;
-  role: string;
-  last_updated: string;
-  embedding: number[];
-};
+import { Note } from '../types';
+import NoteEdit from '../components/NoteEdit/NoteEdit';
+import NoteChat from '../components/NoteChat/NoteChat';
+import { Suggestion } from '../components/NoteChat/components';
 
 export function MainPage() {
   const [editing, setEditing] = useState<Note | null>(null);
   const [notes, setNotes] = useState<Note[]>([]);
   const [user, setUser] = useState<User | null>(null);
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [noteSuggestions, setNoteSuggestions] = useState<Note[]>([]);
+  const [commandSuggestions, setCommandSuggestions] = useState<string[]>([]);
+  const [input, setInput] = useState('');
 
-  const sidePanelStyle = {
-    height: '100vh', // Full viewport height
-    backgroundColor: "#212121",
-  };
-
+  /**
+   * Update notes and user info
+   */
   const update = async () => {
     setNotes(await fetchNotes());
     // User picture
@@ -41,17 +34,7 @@ export function MainPage() {
     }
   }
 
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    update();
-  }, [user]);
-
-  useEffect(() => {
-    if (containerRef.current) {
-      containerRef.current.scrollTop = containerRef.current.scrollHeight; // Scroll to the bottom
-    }
-  }, [editing, notes])
+  /* Note Functions */
 
   async function handleAddNote(role: string, content: string) {
     const id = uuid();
@@ -79,14 +62,48 @@ export function MainPage() {
     });
   }
 
+  async function handleUpdateNote(id: string, content: string, embedding: number[]) {
+    const updateTime = new Date().toISOString();
+    // Update state
+    const newNotes = notes
+      .map((n) => (n.id === id ? { ...n, content: content, last_updated: updateTime } : n)) // Update the element
+      .filter((n) => n.id !== id); // Remove the updated element from its current position
+
+    const updatedNote = notes.find((n) => n.id === id); // Find the updated element
+    if (updatedNote) {
+      updatedNote.content = content;
+      updatedNote.last_updated = updateTime;
+      newNotes.push(updatedNote); // Move the updated element to the end
+    }
+
+    setNotes(newNotes);
+    // Store in local storage to prevent data lost
+    const storedData = localStorage.getItem("notes");
+    const storedNotes = storedData ? JSON.parse(storedData) : [];
+    storedNotes.push({id, role: "user", content, embedding, last_updated: updateTime});
+    // Store in supabase
+    updateNote(id, content, embedding, updateTime);
+  }
+
+  const handleDeleteNote = (id: string) => {
+    const updatedNotes = notes.filter((n) => n.id !== id);
+    setNotes(updatedNotes);
+    // Update local storage
+    localStorage.setItem("notes", JSON.stringify(updatedNotes));
+    // Update supabase
+    deleteNote(id);
+  }
+
+  /* Note Syncing */
+
   const getNotesFromLocalStorage = (): Note[] => {
     const notes = localStorage.getItem("notes");
     return notes ? JSON.parse(notes) : [];
-  };
+  }
 
   const saveToLocalStorage = (notes: Note[]) => {
     localStorage.setItem("notes", JSON.stringify(notes));
-  };
+  }
 
   // * Notes are being stored both in local storage and supabase.
   // * To enable offline note taking as well as preventing data lost
@@ -130,57 +147,6 @@ export function MainPage() {
     }
   }
 
-  useEffect(() => {
-    syncNotes();
-  }, [])
-
-  async function handleUpdateNote(id: string, content: string, embedding: number[]) {
-    const updateTime = new Date().toISOString();
-    // Update state
-    const newNotes = notes
-      .map((n) => (n.id === id ? { ...n, content: content, last_updated: updateTime } : n)) // Update the element
-      .filter((n) => n.id !== id); // Remove the updated element from its current position
-
-    const updatedNote = notes.find((n) => n.id === id); // Find the updated element
-    if (updatedNote) {
-      updatedNote.content = content;
-      updatedNote.last_updated = updateTime;
-      newNotes.push(updatedNote); // Move the updated element to the end
-    }
-
-    setNotes(newNotes);
-    // Store in local storage to prevent data lost
-    const storedData = localStorage.getItem("notes");
-    const storedNotes = storedData ? JSON.parse(storedData) : [];
-    storedNotes.push({id, role: "user", content, embedding, last_updated: updateTime});
-    // Store in supabase
-    updateNote(id, content, embedding, updateTime);
-  }
-
-  /* async function updateNote(id: string, content: string) {
-    const response = await fetch('/api/notes', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, content }),
-    });
-
-    if (!response.ok) {
-      alert('Error updating note');
-    }
-  }
-
-  async function deleteNote(id: string) {
-    const response = await fetch('/api/notes', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id }),
-    });
-
-    if (!response.ok) {
-      alert('Error deleting note');
-    }
-  } */
-
   async function handleHybridSearch(query: string) {
     const embedding = await generateEmbedding(query);
     const data = await hybridSearch(query, embedding);
@@ -193,9 +159,6 @@ export function MainPage() {
     if(!response) return;
     handleAddNote('assistant', response)
   }
-
-  const [noteSuggestions, setNoteSuggestions] = useState<Note[]>([]);
-  const [commandSuggestions, setCommandSuggestions] = useState<string[]>([]);
 
   const handleInputChange: React.ChangeEventHandler<HTMLInputElement> = async (e) => {
     const input = (e.target as HTMLInputElement).value;
@@ -272,42 +235,6 @@ export function MainPage() {
     }
   };  
 
-  useEffect(() => {
-    const { data } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN') {
-        if(!session?.user) return;
-        console.log('User signed in:', session?.user);
-        setUser(session?.user);
-      }
-    });
-    
-    // To unsubscribe:
-    return () => data.subscription.unsubscribe();    
-  }, []);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const status = params.get('status');
-    
-    if (status === 'signed_in') {
-      console.log('User has just signed up!');
-      // Handle signed-in status
-    }
-  }, []);
-
-  useEffect(() => {
-    const handleNote = (event: MessageEvent) => {
-      if (event.data?.status === 'signed_in') {
-        console.log('User has signed up:', event.data.user);
-        setUser(event.data.user || null);
-        // Handle signed-in user, e.g., update UI
-      }
-    };
-  
-    window.addEventListener('message', handleNote);
-    return () => window.removeEventListener('message', handleNote);
-  }, []);
-
   const handleOpenOnboarding: React.MouseEventHandler = (e) => {
     e.preventDefault();
 
@@ -322,20 +249,33 @@ export function MainPage() {
     );
   };
 
-  const [input, setInput] = useState('');
+  useEffect(() => {
+    syncNotes();
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN') {
+        if(!session?.user) return;
+        console.log('User signed in:', session?.user);
+        setUser(session?.user);
+      }
+    });
+    return () => data.subscription.unsubscribe();  
+  }, [])
 
-  const handleDeleteNote = (id: string) => {
-    const updatedNotes = notes.filter((n) => n.id !== id);
-    setNotes(updatedNotes);
-    // Update local storage
-    localStorage.setItem("notes", JSON.stringify(updatedNotes));
-    // Update supabase
-    deleteNote(id);
-  }
+  // Update notes and user info when user changes
+  useEffect(() => {
+    update();
+  }, [user]);
+
+  // Scroll to the bottom by default
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
+    }
+  }, [editing, notes])
 
   return (
     <div className='flex justify-start items-start w-full'>
-      <div style={sidePanelStyle} className="flex flex-col h-full w-full">
+      <div className="flex flex-col h-[100vh] w-full bg-[#212121]">
       <div 
         ref={containerRef}
         className="pt-3 pb-5 flex-grow overflow-auto flex flex-col scrollbar scrollbar-thumb-blue-500 scrollbar-track-gray-300">
@@ -403,175 +343,4 @@ export function MainPage() {
     </div>
     </div>
   );
-}
-
-const Suggestion = ({text, onClick}: {text: string, onClick: () => void}) => {
-  return (
-    <div 
-      className='p-2 pl-3 pr-3 suggestion cursor-pointer' 
-      onClick={onClick}>
-      {text}
-    </div>
-  )
-}
-
-type NoteProps = {
-  key: string;
-  content: string;
-};
-
-const AssistantNote = ({content}: NoteProps) => {
-  return (
-    <div className="flex py-2 px-4 w-ful" style={{backgroundColor: "#191919"}}>
-      <img height={14} width={14} className='mr-2 mt-[0.2rem] flex-shrink-0' style={{ width: '14px', height: '14px' }} src={icon} alt="icon"/>
-      <ReactMarkdown>{content}</ReactMarkdown>
-    </div>
-  )
-}
-
-const UserNote = ({note, onClick}: {note: Note, onClick: () => void}) => {
-  /*
-  const date = new Date(note.last_updated);
-  // Use Intl.DateTimeFormat to format the date
-  const formattedDate = new Intl.DateTimeFormat("en-US", {
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(date);
-  */
-  return (
-    <div className="p-4 pt-2 pb-2 w-full user-Note cursor-pointer flex" onClick={onClick}>
-      <ReactMarkdown className="markdown">{note.content}</ReactMarkdown>
-      {/*<p className='text-end pt-1 text-[#565656]' style={{fontSize: "10pt"}}>{formattedDate}</p> */}
-    </div>
-  )
-}
-
-const ChatDateDivider = ({ date }: { date: string}) => {
-  return (
-    <div className="flex items-center w-full my-1 px-2">
-      {/* Horizontal line on the left */}
-      <div className="flex-grow border-t border-[#414141]"></div>
-      
-      {/* Date in the middle */}
-      <span className="px-3 text-[#818181] font-medium" style={{fontSize: "9pt"}}>{date}</span>
-      
-      {/* Horizontal line on the right */}
-      <div className="flex-grow border-t border-[#414141]"></div>
-    </div>
-  );
-};
-
-const NoteChat = ({notes, onNoteClick}: {notes: Note[], onNoteClick: (n: Note) => void}) => {
-  let last_date: string;
-  return <>
-    {
-      notes.map((n) => {
-        const components = [];
-        const date = new Date(n.last_updated);
-        // Format the date
-        const formattedDate = new Intl.DateTimeFormat("en-US", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        }).format(date);
-        if(!last_date || last_date !== formattedDate) {
-          last_date = formattedDate;
-          components.push(<ChatDateDivider date={last_date} />)
-        }
-        if (n.role == 'user') {
-          components.push(<UserNote key={uuid()} note={n} onClick={() => onNoteClick(n)}/>)
-        } 
-        if (n.role == 'assistant') {
-          components.push(<AssistantNote key={uuid()} content={n.content} />)
-        }
-        return components;
-      })
-    }
-  </>
-}
-
-const MorePopUp = ({
-  deleteNote, 
-  closePopUp, 
-  closeEdit}: 
-  {
-    deleteNote: () => void, 
-    closePopUp: () => void
-    closeEdit: () => void}) => {
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (ref.current && !ref.current.contains(event.target as Node)) {
-        closePopUp();
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-
-    // Cleanup the event listener
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [closePopUp]);
-
-  return <div ref={ref} className='flex flex-col absolute right-12 w-[10rem] bg-black p-1 rounded-md'>
-    <div
-      onClick={
-        () => {
-          deleteNote();
-          closeEdit();
-        }
-      } 
-      className='flex items-center justify-between hover:bg-[#212121] cursor-pointer rounded-sm py-1 px-2 text-red-500'>
-      <p>Delete Note</p>
-      <MdDeleteForever size={24}/>
-    </div>
-  </div>
-}
-
-const NoteEdit = ({content, deleteNote, onChange, close}: {content: string, deleteNote: () => void, onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void, close: () => void}) => {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [value, setValue] = useState<string>(content);
-  const [showMorePopUp, setShowMorePopUp] = useState<boolean>(false);
-
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.focus(); // Autofocus
-      textareaRef.current.selectionStart = textareaRef.current.value.length; // Set cursor position to the end
-      textareaRef.current.selectionEnd = textareaRef.current.value.length;
-    }
-  }, []);
-  
-  return (
-    <div className='flex flex-col h-full'>
-      {showMorePopUp ? 
-        <MorePopUp 
-          deleteNote={deleteNote} 
-          closePopUp={()=>setShowMorePopUp(false)}
-          closeEdit={()=>close()}
-          /> : null}
-      <div className='flex item-center justify-between mx-3'>
-        <IoIosArrowBack className='m-1 mb-0 cursor-pointer' onClick={() => close()} size={22}/>
-        <IoIosMore 
-          onClick={() => setShowMorePopUp(true)}
-          className='cursor-pointer px-1 hover:bg-[#313131] rounded-md' size={33}/>
-      </div>
-      <textarea
-        ref={textareaRef}
-        value={value}
-        onChange={(e) => {
-          const updatedValue = e.target.value;
-          setValue(updatedValue);
-          onChange(e);
-        }}
-        placeholder='tesrt'
-        className='h-full bg-transparent focus:outline-none p-4 pt-2 pb-2'
-        style={{
-          boxSizing: 'border-box',
-          resize: 'none',
-        }}
-      />
-    </div>
-  )
 }
