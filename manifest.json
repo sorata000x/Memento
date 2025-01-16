@@ -3,7 +3,7 @@
   "name": "Memento",
   "version": "1.0",
   "description": "A Chrome extension with full onboarding page",
-  "permissions": ["sidePanel"],
+  "permissions": ["sidePanel", "tabs"],
   "background": {
     "service_worker": "background.js"
   },
@@ -22,7 +22,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["onboarding.html", "onboarding.js", "static/*"],
+      "resources": ["onboarding.html", "onboarding.js", "static/*", "setting.html", "setting.js"],
       "matches": ["<all_urls>"]
     }
   ],

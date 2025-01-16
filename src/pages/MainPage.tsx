@@ -11,6 +11,7 @@ import { Note } from '../types';
 import NoteEdit from '../components/NoteEdit/NoteEdit';
 import NoteChat from '../components/NoteChat/NoteChat';
 import { Suggestion, UserNote } from '../components/NoteChat/components';
+import { TbSettings } from "react-icons/tb";
 
 export function MainPage() {
   const [editing, setEditing] = useState<Note | null>(null);
@@ -315,6 +316,10 @@ export function MainPage() {
 
   const [deletingNote, setDeletingNote] = useState<Note|null>(null); // Delete confirmation note
 
+  const openSetting = () => {
+    chrome.tabs.create({ url: chrome.runtime.getURL("setting.html") });
+  };  
+
   return (
     <>
       { deletingNote !== null ? 
@@ -378,7 +383,11 @@ export function MainPage() {
             onKeyDown={handleKeyDown}
             onChange={handleInputChange}
             />
-          <div className='flex justify-end p-3'>
+          <div className='flex justify-end p-3 items-center gap-2'>
+            <TbSettings
+              className='cursor-pointer'
+              onClick={()=>openSetting()}
+              size={28}/>
             {profilePicture ? 
               <div
                 className="h-5 w-5 rounded-full cursor-pointer bg-cover bg-center" 

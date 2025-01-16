@@ -24,3 +24,8 @@ chrome.runtime.onInstalled.addListener((details) => {
   }
 });
   
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "openSetting") {
+    chrome.tabs.create({ url: chrome.runtime.getURL("setting.html") });
+  }
+});
