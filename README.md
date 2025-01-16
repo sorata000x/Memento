@@ -9,7 +9,7 @@ Memento is a simplistic and intuitive AI-powered note taking app.
 
 ## Key Features
 
-- Simplistic Note Taking in Chrome Browser: Record your thoughts or any notes in an instant.
+- Simplistic Note Taking in Chrome Browser: Record your thoughts or notes in any instant.
 - Semantic RAG: Chat with AI assistant based on the notes that are semantically similar to your query (we are planning to improve this for more tailored responses).
 - LLM Assistant: Currently using OpenAI GPT-4o mini but planninng to support more models in the future.
 
