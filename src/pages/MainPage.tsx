@@ -52,7 +52,7 @@ export function MainPage() {
       },
     ]);
     // Store in local storage to prevent data lost
-    const storedData = localStorage.getItem("notes");
+    const storedData = localStorage.getItem(user?.id || "guest");
     const localNotes = storedData ? JSON.parse(storedData) : [];
     localNotes.push({id, role: "user", content, embedding, last_updated});
     // Store in database
@@ -79,7 +79,7 @@ export function MainPage() {
 
     setNotes(newNotes);
     // Store in local storage to prevent data lost
-    const storedData = localStorage.getItem("notes");
+    const storedData = localStorage.getItem(user?.id || "guest");
     const storedNotes = storedData ? JSON.parse(storedData) : [];
     storedNotes.push({id, role: "user", content, embedding, last_updated: updateTime});
     // Store in supabase
@@ -90,7 +90,7 @@ export function MainPage() {
     const updatedNotes = notes.filter((n) => n.id !== id);
     setNotes(updatedNotes);
     // Update local storage
-    localStorage.setItem("notes", JSON.stringify(updatedNotes));
+    localStorage.setItem(user?.id || "guest", JSON.stringify(updatedNotes));
     // Update supabase
     deleteNote(id);
   }
@@ -98,12 +98,12 @@ export function MainPage() {
   /* Note Syncing */
 
   const getNotesFromLocalStorage = (): Note[] => {
-    const notes = localStorage.getItem("notes");
+    const notes = localStorage.getItem(user?.id || "guest");
     return notes ? JSON.parse(notes) : [];
   }
 
   const saveToLocalStorage = (notes: Note[]) => {
-    localStorage.setItem("notes", JSON.stringify(notes));
+    localStorage.setItem(user?.id || "guest", JSON.stringify(notes));
   }
 
   // * Notes are being stored both in local storage and supabase.
