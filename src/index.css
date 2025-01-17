@@ -64,7 +64,6 @@ button:focus-visible {
 }
 
 .markdown * {
-  all: unset;
   display: revert; /* Reset Tailwind's base styles */
 }
 
