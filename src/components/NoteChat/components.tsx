@@ -15,7 +15,7 @@ export const Suggestion = ({text, onClick}: {text: string, onClick: () => void})
 export const UserNote = ({content, onClick}: {content: string, onClick?: () => void}) => {
     return (
       <div className="p-4 pt-2 pb-2 w-full user-Note cursor-pointer" onClick={onClick}>
-        <ReactMarkdown className="markdown">{content}</ReactMarkdown>
+        <ReactMarkdown className="markdown">{content.replace(/\n/g, "  \n &nbsp;")}</ReactMarkdown>
         {/*<p className='text-end pt-1 text-[#565656]' style={{fontSize: "10pt"}}>{formattedDate}</p> */}
       </div>
     )
@@ -26,7 +26,7 @@ export const AssistantNote = ({content, onClick}: {content: string, onClick?: ()
     <div className="flex py-2 px-4 w-ful" style={{backgroundColor: "#191919"}}>
       <img height={14} width={14} className='mr-2 mt-[0.2rem] flex-shrink-0' style={{ width: '14px', height: '14px' }} src={icon} alt="icon"/>
       <div className="flex flex-col">
-        <ReactMarkdown className="markdown">{content}</ReactMarkdown>
+        <ReactMarkdown className="markdown">{content.replace(/\n/g, "  \n")}</ReactMarkdown>
         {
           onClick ? 
           <div 

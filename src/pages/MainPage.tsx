@@ -393,6 +393,7 @@ export function MainPage() {
             confirmDelete={() => setDeletingNote(editing)}
             onChange={async (e) => {
               const value = e.target.value;
+              console.log(`value: ${value}`);
               const embedding = await generateEmbedding(value);
               handleUpdateNote(editing.id, value, embedding);
             }} 
