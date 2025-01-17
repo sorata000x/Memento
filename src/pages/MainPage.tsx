@@ -27,7 +27,7 @@ export function MainPage() {
    * Update notes and user info
    */
   const update = async () => {
-    setNotes(await fetchNotes());
+    handleFetchNote();
     // User picture
     if (user) {
       const picture = user.user_metadata.avatar_url || user.user_metadata.picture;
@@ -36,6 +36,15 @@ export function MainPage() {
   }
 
   /* Note Functions */
+
+  async function handleFetchNote() {
+    if(user) {
+      syncNotes();
+      setNotes(await fetchNotes());
+    } else {
+      setNotes(getNotesFromLocalStorage());
+    }
+  }
 
   async function handleAddNote(role: string, content: string) {
     const id = uuid();
@@ -257,7 +266,11 @@ export function MainPage() {
         if(!session?.user) return;
         console.log('User signed in:', session?.user);
         setUser(session?.user);
-      }
+      } else if (event == 'SIGNED_OUT') {
+        console.log('User signed out');
+        setUser(null);
+        setProfilePicture(null);
+      } 
     });
     return () => data.subscription.unsubscribe();  
   }, [])
