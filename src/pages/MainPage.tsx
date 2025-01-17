@@ -7,15 +7,18 @@ import { FaRegUserCircle } from "react-icons/fa";
 import { supabase } from '../lib/supabase';
 import { User } from '@supabase/supabase-js';
 import '../App.css';
-import { Note } from '../types';
+import { Note, Response } from '../types';
 import NoteEdit from '../components/NoteEdit/NoteEdit';
 import NoteChat from '../components/NoteChat/NoteChat';
 import { Suggestion, UserNote } from '../components/NoteChat/components';
 import { TbSettings } from "react-icons/tb";
+import { addResponses, fetchResponses } from '../api/responses';
+import KnowledgeBase from '../components/KnowledgeBase/KnowledgeBase';
 
 export function MainPage() {
   const [editing, setEditing] = useState<Note | null>(null);
   const [notes, setNotes] = useState<Note[]>([]);
+  const [responses, setResponses] = useState<Response[]>([]);
   const [user, setUser] = useState<User | null>(null);
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -28,6 +31,7 @@ export function MainPage() {
    */
   const update = async () => {
     handleFetchNote();
+    handleFetchResponses();
     // User picture
     if (user) {
       const picture = user.user_metadata.avatar_url || user.user_metadata.picture;
@@ -157,6 +161,36 @@ export function MainPage() {
     }
   }
 
+  /* Responses Functions */
+
+  async function handleFetchResponses() {
+    if(user) {
+      setResponses(await fetchResponses());
+    }
+  }
+
+  async function handleAddResponse(content: string, knowledge_base_ids: string[]) {
+    const id = uuid();
+    const created_at = new Date().toISOString();
+    const embedding = await generateEmbedding(content);
+    setResponses((prev) => [
+      ...prev,
+      {
+        id,
+        content,
+        embedding,
+        created_at,
+        knowledge_base_ids
+      },
+    ]);
+    // Store in database
+    await addResponses({
+      content,
+      embedding,
+      knowledge_base_ids
+    });
+  }
+
   async function handleHybridSearch(query: string) {
     const embedding = await generateEmbedding(query);
     const data = await hybridSearch(query, embedding);
@@ -167,7 +201,7 @@ export function MainPage() {
     const notes = await handleHybridSearch(input);
     const response = await chatWithNotes(input, notes);
     if(!response) return;
-    handleAddNote('assistant', response)
+    handleAddResponse(response, notes.map(n => n.id));
   }
 
   const handleInputChange: React.ChangeEventHandler<HTMLInputElement> = async (e) => {
@@ -312,7 +346,7 @@ export function MainPage() {
         <h1 className='text-base font-semibold'>Delete Note</h1>
         <p className='py-2'>Are you sure you want to delete this note?</p>
         <div className='border border-[#515151] rounded-md my-3 mb-6'>
-          <UserNote note={note} />
+          <UserNote content={note.content} />
         </div>
         <div className='grow'/>
         <div className='flex justify-end font-semibold'>
@@ -327,11 +361,15 @@ export function MainPage() {
     </div>
   }
 
+  useEffect(() => {console.log(`responses: ${responses}`)}, [responses])
+
   const [deletingNote, setDeletingNote] = useState<Note|null>(null); // Delete confirmation note
 
   const openSetting = () => {
     chrome.tabs.create({ url: chrome.runtime.getURL("setting.html") });
   };  
+
+  const [showKnowledgeBase, setShowKnwledgeBase] = useState<{content: string, knowledgeBase: string[]} | null>(null);
 
   return (
     <>
@@ -350,17 +388,22 @@ export function MainPage() {
         <div 
           ref={containerRef}
           className="pt-3 pb-5 flex-grow overflow-auto flex flex-col scrollbar scrollbar-thumb-blue-500 scrollbar-track-gray-300">
-          {editing ? 
-            <NoteEdit 
-              content={editing.content} 
-              confirmDelete={() => setDeletingNote(editing)}
-              onChange={async (e) => {
-                const value = e.target.value;
-                const embedding = await generateEmbedding(value);
-                handleUpdateNote(editing.id, value, embedding);
-              }} close={() => {setEditing(null)}}
-              /> : 
-            <NoteChat notes={notes} onNoteClick={(note) => {setEditing(note)}}/>}
+          {editing && <NoteEdit 
+            content={editing.content} 
+            confirmDelete={() => setDeletingNote(editing)}
+            onChange={async (e) => {
+              const value = e.target.value;
+              const embedding = await generateEmbedding(value);
+              handleUpdateNote(editing.id, value, embedding);
+            }} 
+            close={() => {setEditing(null)}}
+          />}
+          {showKnowledgeBase && <KnowledgeBase 
+            content={showKnowledgeBase.content} 
+            knowledgeBase={showKnowledgeBase.knowledgeBase}
+            close={() => setShowKnwledgeBase(null)}
+          />}
+          {!editing && !showKnowledgeBase && <NoteChat notes={notes} responses={responses} onNoteClick={(note) => {setEditing(note)}} openKnowledgeBase={(content, knowledgeBase) => setShowKnwledgeBase({content, knowledgeBase})}/>}
         </div>
         {
           noteSuggestions.length > 0 || commandSuggestions.length > 0 ? 

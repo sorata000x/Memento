@@ -21,3 +21,17 @@ input::placeholder {
 body {
   color: rgba(255, 255, 255, 0.87) !important;
 }
+
+.markdown * {
+  display: revert; /* Reset Tailwind's base styles */
+}
+
+.markdown ul {
+  margin-left: 1.1rem;
+  list-style-type: disc;
+}
+
+.markdown ol {
+  list-style-type: decimal;
+  margin-left: 1.2rem;
+}

@@ -1,6 +1,6 @@
-import { Note } from "../../types"
 import ReactMarkdown from 'react-markdown';
 import icon from "../../assets/memento-icon.png";
+import { MdOutlineStickyNote2 } from "react-icons/md";
 
 export const Suggestion = ({text, onClick}: {text: string, onClick: () => void}) => {
     return (
@@ -12,20 +12,31 @@ export const Suggestion = ({text, onClick}: {text: string, onClick: () => void})
     )
 }
 
-export const UserNote = ({note, onClick}: {note: Note, onClick?: () => void}) => {
+export const UserNote = ({content, onClick}: {content: string, onClick?: () => void}) => {
     return (
       <div className="p-4 pt-2 pb-2 w-full user-Note cursor-pointer" onClick={onClick}>
-        <ReactMarkdown className="markdown">{note.content}</ReactMarkdown>
+        <ReactMarkdown className="markdown">{content}</ReactMarkdown>
         {/*<p className='text-end pt-1 text-[#565656]' style={{fontSize: "10pt"}}>{formattedDate}</p> */}
       </div>
     )
 }
 
-export const AssistantNote = ({content}: {content: string}) => {
+export const AssistantNote = ({content, onClick}: {content: string, onClick?: () => void}) => {
   return (
     <div className="flex py-2 px-4 w-ful" style={{backgroundColor: "#191919"}}>
       <img height={14} width={14} className='mr-2 mt-[0.2rem] flex-shrink-0' style={{ width: '14px', height: '14px' }} src={icon} alt="icon"/>
-      <ReactMarkdown className="markdown">{content}</ReactMarkdown>
+      <div className="flex flex-col">
+        <ReactMarkdown className="markdown">{content}</ReactMarkdown>
+        {
+          onClick ? 
+          <div 
+            onClick={onClick}
+            className="flex items-center gap-1 text-xm text-[#919191] cursor-pointer">
+            <MdOutlineStickyNote2 />
+            Knowledge Base
+          </div> : null
+        }
+      </div>
     </div>
   )
 }
