@@ -371,6 +371,22 @@ export function MainPage() {
 
   const [showKnowledgeBase, setShowKnwledgeBase] = useState<{content: string, knowledgeBase: string[]} | null>(null);
 
+  useEffect(() => {
+    // Check localStorage for session (for Firefox)
+    const storedSession = localStorage.getItem('supabase_session');
+    if (storedSession) {
+      const session = JSON.parse(storedSession);
+      console.log('Restored session:', session.user);
+    }
+
+    // Listen for sign-in messages (for Chrome)
+    window.addEventListener('message', (event) => {
+      if (event.data?.status === 'signed_in') {
+        console.log('User signed in:', event.data.user);
+      }
+    });
+  }, []);
+
   return (
     <>
       { deletingNote !== null ? 

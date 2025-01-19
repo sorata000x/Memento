@@ -5,74 +5,44 @@ import '../App.css';
 
 const OnboardingPage = () => {
   useEffect(() => {
-    const { data } = supabase.auth.onAuthStateChange((_, session) => {
-      if (session?.user) {
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
         console.log('User signed in:', session.user);
-        // Perform actions after the user is signed in
-      } else {
-        console.log('User signed out or no session found.');
+
+        // Store session in localStorage (Firefox does not allow direct postMessage from OAuth popup)
+        localStorage.setItem('supabase_session', JSON.stringify(session));
+
+        // Use postMessage in Chrome but localStorage for Firefox
+        if (window.opener) {
+          window.opener.postMessage({ status: 'signed_in', user: session.user }, '*');
+          window.close(); // Close the popup after sign-in
+        }
+      } else if (event === 'SIGNED_OUT') {
+        console.log('User signed out');
+        localStorage.removeItem('supabase_session'); // Clear session storage
       }
     });
-  
-    // Unsubscribe on component unmount
+
     return () => {
       data.subscription.unsubscribe();
     };
-  }, []);  
-  
+  }, []);
+
   const handleGoogleSignIn = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
+      options: {
+        redirectTo: browser.runtime.getURL('index.html'), // Ensure it works in both Chrome and Firefox
+      },
     });
-  
+
     if (error) {
       console.error('Error signing in with Google:', error.message);
       return;
     }
-  
+
     // Session will be handled in the auth listener
   };
-  
-  useEffect(() => {
-    const { data } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN') {
-        console.log('User signed in:', session?.user);
-      } else if (event === 'SIGNED_OUT') {
-        console.log('User signed out');
-      }
-    });
-  
-    return () => {
-      // Correctly access the subscription from data and unsubscribe
-      data.subscription.unsubscribe();
-    };
-  }, []);  
-
-  useEffect(() => {
-    const handleSignup = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        const extensionId = chrome.runtime.id;
-        // Redirect back to the extension's sidebar with query parameters
-        window.location.href = `chrome-extension://${extensionId}/index.html?status=signed_in`;
-      }
-    };
-
-    handleSignup();
-  }, []);
-
-  useEffect(() => {
-    const handleSignup = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      const user = session?.user
-      if (user) {
-        // Notify the main page (sidebar) about the sign-up
-        window.opener.postMessage({ status: 'signed_in', user }, '*');
-        window.close(); // Close the popup
-      }
-    }
-    handleSignup();
-  }, []);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-100">
