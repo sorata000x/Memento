@@ -4,7 +4,6 @@ import {v4 as uuid} from 'uuid';
 import { hybridSearch, searchNotesByPrefix } from '../api/search';
 import generateEmbedding, { chatWithNotes } from '../api/openai';
 import { FaRegUserCircle } from "react-icons/fa";
-import { supabase } from '../lib/supabase';
 import { User } from '@supabase/supabase-js';
 import '../App.css';
 import { Note, Response } from '../types';
@@ -14,22 +13,33 @@ import { Suggestion, UserNote } from '../components/NoteChat/components';
 import { TbSettings } from "react-icons/tb";
 import { addResponses, fetchResponses } from '../api/responses';
 import KnowledgeBase from '../components/KnowledgeBase/KnowledgeBase';
+import { useNavigate } from 'react-router-dom';
 
-export function MainPage() {
+export function MainPage({user}: {user: User | null}) {
   const [editing, setEditing] = useState<Note | null>(null);
   const [notes, setNotes] = useState<Note[]>([]);
   const [responses, setResponses] = useState<Response[]>([]);
-  const [user, setUser] = useState<User | null>(null);
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [noteSuggestions, setNoteSuggestions] = useState<Note[]>([]);
   const [commandSuggestions, setCommandSuggestions] = useState<string[]>([]);
   const [input, setInput] = useState('');
 
+  const init = async () => {
+    setEditing(null);
+    setNotes([]);
+    setProfilePicture(null);
+    setNoteSuggestions([]);
+    setCommandSuggestions([]);
+    setInput('');
+    setResponses([]);
+  }
+
   /**
    * Update notes and user info
    */
   const update = async () => {
+    init();
     handleFetchNote();
     handleFetchResponses();
     // User picture
@@ -43,9 +53,11 @@ export function MainPage() {
 
   async function handleFetchNote() {
     if(user) {
+      console.log('A')
       syncNotes();
       setNotes(await fetchNotes());
     } else {
+      console.log('B')
       setNotes(getNotesFromLocalStorage());
     }
   }
@@ -278,35 +290,17 @@ export function MainPage() {
       }
     }
   };  
+  
+  const navigate = useNavigate();
 
   const handleOpenOnboarding: React.MouseEventHandler = (e) => {
     e.preventDefault();
 
-    // Define the URL of the onboarding page
-    const onboardingURL = chrome.runtime.getURL("onboarding.html");
-
-    // Open a popup window
-    window.open(
-      onboardingURL,
-      "onboarding", // Popup window name
-      "width=400,height=600,scrollbars=yes,resizable=yes"
-    );
+    navigate("/onboarding");
   };
 
   useEffect(() => {
     syncNotes();
-    const { data } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN') {
-        if(!session?.user) return;
-        console.log('User signed in:', session?.user);
-        setUser(session?.user);
-      } else if (event == 'SIGNED_OUT') {
-        console.log('User signed out');
-        setUser(null);
-        setProfilePicture(null);
-      } 
-    });
-    return () => data.subscription.unsubscribe();  
   }, [])
 
   // Update notes and user info when user changes
@@ -366,26 +360,11 @@ export function MainPage() {
   const [deletingNote, setDeletingNote] = useState<Note|null>(null); // Delete confirmation note
 
   const openSetting = () => {
-    chrome.tabs.create({ url: chrome.runtime.getURL("setting.html") });
+    //chrome.tabs.create({ url: chrome.runtime.getURL("setting.html") });
+    navigate("/setting");
   };  
 
   const [showKnowledgeBase, setShowKnwledgeBase] = useState<{content: string, knowledgeBase: string[]} | null>(null);
-
-  useEffect(() => {
-    // Check localStorage for session (for Firefox)
-    const storedSession = localStorage.getItem('supabase_session');
-    if (storedSession) {
-      const session = JSON.parse(storedSession);
-      console.log('Restored session:', session.user);
-    }
-
-    // Listen for sign-in messages (for Chrome)
-    window.addEventListener('message', (event) => {
-      if (event.data?.status === 'signed_in') {
-        console.log('User signed in:', event.data.user);
-      }
-    });
-  }, []);
 
   return (
     <>
@@ -424,7 +403,7 @@ export function MainPage() {
         </div>
         {
           noteSuggestions.length > 0 || commandSuggestions.length > 0 ? 
-          <div className='w-full absolute bottom-[2rem] left-0 p-3 overflow-hidden'>
+          <div className='w-full absolute bottom-[2.25rem] left-0 p-3 overflow-hidden'>
             <div className='flex flex-col rounded-lg' style={{ backgroundColor: "#2f2f2f"}}>
               <div className='flex flex-col rounded-lg overflow-scroll max-h-[calc(100vh-10rem)]'>
                 {noteSuggestions.map(note => <Suggestion text={note.content} onClick={() => {

@@ -35,3 +35,9 @@ body {
   list-style-type: decimal;
   margin-left: 1.2rem;
 }
+
+body {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

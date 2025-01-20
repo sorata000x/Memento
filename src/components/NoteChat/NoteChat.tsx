@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Message, Note, Response } from "../../types";
-import { AssistantNote, ChatDateDivider, UserNote } from "./components";
+import { AssistantNote, ChatDateDivider, SystemNote, UserNote } from "./components";
 import {v4 as uuid} from "uuid";
 
 const NoteChat = ({
@@ -37,6 +37,7 @@ const NoteChat = ({
 
   let last_date: string;
   return <>
+    <SystemNote content={`- Type anything and press enter in the input below to add a note.\n- Add space key in front of your input (e.g. " What is my todos for today") to chat with AI assistance based on your notes.`}/>
     {
       messages.map((m) => {
         const components = [];

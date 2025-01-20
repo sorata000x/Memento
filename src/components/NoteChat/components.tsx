@@ -1,6 +1,8 @@
 import ReactMarkdown from 'react-markdown';
 import icon from "../../assets/memento-icon.png";
 import { MdOutlineStickyNote2 } from "react-icons/md";
+import "../../App.css";
+import { HiOutlineLightBulb } from "react-icons/hi";
 
 export const Suggestion = ({text, onClick}: {text: string, onClick: () => void}) => {
     return (
@@ -15,7 +17,7 @@ export const Suggestion = ({text, onClick}: {text: string, onClick: () => void})
 export const UserNote = ({content, onClick}: {content: string, onClick?: () => void}) => {
     return (
       <div className="p-4 pt-2 pb-2 w-full user-Note cursor-pointer" onClick={onClick}>
-        <ReactMarkdown className="markdown">{content.replace(/\n/g, "  \n &nbsp;")}</ReactMarkdown>
+        <ReactMarkdown className="markdown">{content.replace(/\n\n/g, "  \n &nbsp;  \n").replace(/\n/g, "  \n")}</ReactMarkdown>
         {/*<p className='text-end pt-1 text-[#565656]' style={{fontSize: "10pt"}}>{formattedDate}</p> */}
       </div>
     )
@@ -24,7 +26,7 @@ export const UserNote = ({content, onClick}: {content: string, onClick?: () => v
 export const AssistantNote = ({content, onClick}: {content: string, onClick?: () => void}) => {
   return (
     <div className="flex py-2 px-4 w-ful" style={{backgroundColor: "#191919"}}>
-      <img height={14} width={14} className='mr-2 mt-[0.2rem] flex-shrink-0' style={{ width: '14px', height: '14px' }} src={icon} alt="icon"/>
+      <img height={14} width={14} className='mr-2 mt-[0.3rem] flex-shrink-0' style={{ width: '18px', height: '18px' }} src={icon} alt="icon"/>
       <div className="flex flex-col">
         <ReactMarkdown className="markdown">{content.replace(/\n/g, "  \n")}</ReactMarkdown>
         {
@@ -41,6 +43,17 @@ export const AssistantNote = ({content, onClick}: {content: string, onClick?: ()
   )
 }
 
+export const SystemNote = ({content}: {content: string}) => {
+  return (
+    <div className="flex py-2 px-4 w-ful" style={{backgroundColor: "#191919"}}>
+     <HiOutlineLightBulb className='mr-0 mt-[0rem] flex-shrink-0 text-[#A1A1A1]' size={22}/>
+      <div className="flex flex-col">
+        <ReactMarkdown className="markdown text-[#A1A1A1] font-medium text-sm">{content.replace(/\n/g, "  \n")}</ReactMarkdown>
+      </div>
+    </div>
+  )
+}
+
 export const ChatDateDivider = ({ date }: { date: string}) => {
   return (
     <div className="flex items-center w-full my-1 px-2">
@@ -48,7 +61,7 @@ export const ChatDateDivider = ({ date }: { date: string}) => {
       <div className="flex-grow border-t border-[#414141]"></div>
       
       {/* Date in the middle */}
-      <span className="px-3 text-[#818181] font-medium" style={{fontSize: "9pt"}}>{date}</span>
+      <span className="px-3 text-[#818181] font-medium" style={{fontSize: "10pt"}}>{date}</span>
       
       {/* Horizontal line on the right */}
       <div className="flex-grow border-t border-[#414141]"></div>

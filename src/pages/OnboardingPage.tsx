@@ -1,9 +1,10 @@
 import { supabase } from '../lib/supabase';
-import { StrictMode, useEffect } from 'react';
-import { createRoot } from 'react-dom/client';
+import { useEffect } from 'react';
 import '../App.css';
+import { useNavigate } from 'react-router-dom';
+import { User } from '@supabase/supabase-js';
 
-const OnboardingPage = () => {
+const OnboardingPage = ({setUser}: {setUser: (user: User | null) => void}) => {
   useEffect(() => {
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
@@ -28,21 +29,88 @@ const OnboardingPage = () => {
     };
   }, []);
 
-  const handleGoogleSignIn = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: browser.runtime.getURL('index.html'), // Ensure it works in both Chrome and Firefox
-      },
+  useEffect(() => {
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        console.log('User signed in:', session.user);
+        setUser(session?.user);
+      } else if (event === 'SIGNED_OUT') {
+        console.log('User signed out');
+        setUser(null);
+      }
     });
 
-    if (error) {
-      console.error('Error signing in with Google:', error.message);
-      return;
-    }
+    return () => {
+      data.subscription.unsubscribe();
+    };
+  }, []);
 
-    // Session will be handled in the auth listener
-  };
+  const navigate = useNavigate();
+
+  async function handleGoogleSignIn() {
+    console.log("handleGoogleSignIn");
+
+    const redirectUri = browser.identity.getRedirectURL();
+
+    console.log(`redirectUri: ${redirectUri}`)
+
+    const nonce = Math.random().toString(36).substring(2);
+    
+    // Modify authUrl to request both access_token and id_token
+    const authUrl = `https://accounts.google.com/o/oauth2/auth?`
+        + `client_id=323092752337-g0t1kqhl99as153osasdkgdvk1m2urub.apps.googleusercontent.com`
+        + `&response_type=id_token`
+        + `&redirect_uri=${encodeURIComponent(redirectUri)}`
+        + `&scope=${encodeURIComponent("openid email profile")}`
+        + `&prompt=${encodeURIComponent("consent select_account")}`
+        + `&state=${encodeURIComponent("pass-through value")}`;
+
+        console.log("OAuth URL:", authUrl);
+
+    try {
+        const redirectResult = await browser.identity.launchWebAuthFlow({
+            url: authUrl,
+            interactive: true, // Ensures user interaction
+        });
+
+        if (!redirectResult) {
+          throw new Error("Empty auth response");
+      }
+
+        // Extract both access_token and id_token from the response
+        const urlParams = new URLSearchParams(new URL(redirectResult).hash.substring(1));
+
+        const idToken = urlParams.get("id_token"); // Get the correct ID token
+
+        if (idToken) {
+          const decodedToken = JSON.parse(atob(idToken.split('.')[1])); // Decode JWT
+            console.log("Decoded Token Payload:", decodedToken);
+
+            // Check if nonce is included
+            if (!decodedToken.nonce) {
+                console.warn("❌ Google ID token does NOT include a nonce!");
+            } else {
+                console.log(`✅ Google ID token nonce: ${decodedToken.nonce} nonce: ${nonce}`);
+            }
+
+            // Use the id_token to authenticate with Supabase
+            const { data, error } = await supabase.auth.signInWithIdToken({
+                provider: "google",
+                token: idToken, // Use id_token instead of access_token
+
+            });
+
+            if (error) throw error;
+            console.log("Supabase User:", data);
+            navigate("/");
+        } else {
+            throw new Error("ID token not found.");
+        }
+    } catch (error) {
+        console.error("OAuth Error:", error);
+    }
+}
+
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-100">
@@ -76,11 +144,5 @@ const OnboardingPage = () => {
     </div>
   );
 };
-
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <OnboardingPage />
-  </StrictMode>,
-);
 
 export default OnboardingPage;

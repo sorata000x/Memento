@@ -12,6 +12,7 @@
   "dependencies": {
     "@crxjs/vite-plugin": "^2.0.0-beta.26",
     "@supabase/supabase-js": "^2.47.10",
+    "browser": "^0.2.6",
     "lodash": "^4.17.21",
     "openai": "^4.77.0",
     "react": "^18.3.1",
@@ -20,6 +21,7 @@
     "react-markdown": "^9.0.1",
     "react-router-dom": "^7.1.1",
     "rehype-raw": "^7.0.0",
+    "remark-breaks": "^4.0.0",
     "remark-gfm": "^4.0.0",
     "uuid": "^11.0.3"
   },
@@ -27,6 +29,7 @@
     "@eslint/js": "^9.17.0",
     "@tailwindcss/typography": "^0.5.15",
     "@types/chrome": "^0.0.287",
+    "@types/firefox-webext-browser": "^120.0.4",
     "@types/lodash": "^4.17.14",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",

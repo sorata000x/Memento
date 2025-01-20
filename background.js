@@ -29,3 +29,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     chrome.tabs.create({ url: chrome.runtime.getURL("setting.html") });
   }
 });
+
+// Firefox
+
+browser.runtime.onInstalled.addListener((details) => {
+  if (details.reason === "install") {
+      browser.tabs.create({ url: "https://memento-note.com" });
+  }
+});
+
