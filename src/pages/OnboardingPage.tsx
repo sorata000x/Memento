@@ -1,9 +1,24 @@
 import { supabase } from '../lib/supabase';
-import { StrictMode, useEffect } from 'react';
-import { createRoot } from 'react-dom/client';
+import { useEffect } from 'react';
 import '../App.css';
+import { User } from '@supabase/supabase-js';
+import { useNavigate } from 'react-router-dom';
 
-const OnboardingPage = () => {
+const OnboardingPage = ({setUser}: {setUser: (user: User | null) => void}) => {
+  useEffect(() => {
+      const { data } = supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_IN') {
+          if(!session?.user) return;
+          console.log('User signed in:', session?.user);
+          setUser(session?.user);
+        } else if (event == 'SIGNED_OUT') {
+          console.log('User signed out');
+          setUser(null);
+        } 
+      });
+      return () => data.subscription.unsubscribe();  
+  }, [])
+
   useEffect(() => {
     const { data } = supabase.auth.onAuthStateChange((_, session) => {
       if (session?.user) {
@@ -21,17 +36,64 @@ const OnboardingPage = () => {
   }, []);  
   
   const handleGoogleSignIn = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-    });
+    console.log(`chrome.identity.getRedirectURL(): ${chrome.identity.getRedirectURL()}`);
+
+    //const redirectUrl = "chrome-extension://cfcepbkemomnebaphapaejiomhniifom/index.html";
+    const redirectUrl = chrome.identity.getRedirectURL();
   
-    if (error) {
-      console.error('Error signing in with Google:', error.message);
-      return;
-    }
+    chrome.identity.launchWebAuthFlow(
+      {
+        url: `https://vmosommpjhpawkanucoo.supabase.co/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(redirectUrl)}&prompt=select_account`,
+        interactive: true, // Ensures user sees the account selection prompt
+      },
+      async (responseUrl) => {
+        if (chrome.runtime.lastError) {
+          console.error("Auth error:", chrome.runtime.lastError.message);
+          return;
+        }
   
-    // Session will be handled in the auth listener
+        if (responseUrl) {
+          console.log("Google OAuth Response URL:", responseUrl);
+          // Extract the tokens from responseUrl and handle login
+          const urlParams = new URLSearchParams(responseUrl.split("#")[1]);
+          const accessToken = urlParams.get("access_token"); // If using implicit grant
+          const authCode = urlParams.get("access_code"); // If using authorization code grant
+          console.log(`accessToken: ${accessToken}, authCode: ${authCode}`)
+          if(!accessToken) return;
+          const { data, error } = await supabase.auth.signInWithIdToken({
+            provider: "google",
+            token: accessToken, // Use the extracted access token
+          });
+          if (error) {
+            console.error("Error exchanging auth code:", error.message);
+            return;
+          }
+          console.log("User session:", data);
+
+        }
+      }
+    );
+
+    navigate("/");
   };
+
+  const navigate = useNavigate();
+
+  useEffect(() => {
+      const { data } = supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_IN') {
+          if (!session) return;
+          setUser(session.user);
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null);
+        }
+      });
+    
+      return () => {
+        // Correctly access the subscription from data and unsubscribe
+        data.subscription.unsubscribe();
+      };
+  }, []);  
   
   useEffect(() => {
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
@@ -106,11 +168,5 @@ const OnboardingPage = () => {
     </div>
   );
 };
-
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <OnboardingPage />
-  </StrictMode>,
-);
 
 export default OnboardingPage;
