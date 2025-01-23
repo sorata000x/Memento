@@ -21,16 +21,19 @@ const OnboardingPage = () => {
   }, []);  
   
   const handleGoogleSignIn = async () => {
+    const redirectUri = `chrome-extension://${chrome.runtime.id}/index.html?auth=success`;
+    console.log(`redirectUri: ${redirectUri}`);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
+      options: {
+        redirectTo: redirectUri
+      }
     });
   
     if (error) {
       console.error('Error signing in with Google:', error.message);
       return;
     }
-  
-    // Session will be handled in the auth listener
   };
   
   useEffect(() => {

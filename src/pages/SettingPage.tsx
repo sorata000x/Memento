@@ -1,21 +1,18 @@
-import { StrictMode, useEffect, useState } from "react";
+import { useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { createRoot } from "react-dom/client";
 import { FaUserCircle } from "react-icons/fa";
 import '../App.css';
+import { User } from "@supabase/supabase-js";
+import { IoIosArrowBack } from "react-icons/io";
+import { useNavigate } from "react-router-dom";
 
-const SettingPage = () => {
-    const [user, setUser] = useState<{ name: string; email?: string; profileImage?: string } | null>(null);
+const SettingPage = ({user, setUser}: {user: User | null, setUser: (user: User | null) => void}) => {
 
     useEffect(() => {
         const fetchUser = async () => {
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
-            setUser({
-              name: user.user_metadata.full_name || "Unknown",
-              email: user.email,
-              profileImage: user.user_metadata.avatar_url || "",
-            });
+            setUser(user);
           }
         };
         fetchUser();
@@ -25,11 +22,7 @@ const SettingPage = () => {
                 const user = session?.user;
                 if(!user) return;
                 console.log('User signed in:', session?.user);
-                setUser({
-                    name: user.user_metadata.full_name || "Unknown",
-                    email: user.email,
-                    profileImage: user.user_metadata.avatar_url || "",
-                });
+                setUser(user);
             } else if (event == 'SIGNED_OUT') {
                 console.log('User signed out');
                 setUser(null);
@@ -58,38 +51,38 @@ const SettingPage = () => {
         );
     };
 
-    return <div className="h-[100vh] w-full bg-[#212121] p-10">
-        <h1 className="text-3xl font-medium pb-3">General</h1>
-        <h2 className="text-2xl font-medium py-2">Account</h2>
-        {user ? <div className="flex flex-col">
-            <div className="flex items-center">
-                <img className="rounded-full" src={user.profileImage} width={80} height={80}/>
-                <div className="flex flex-col p-4">
-                    <h3 className="text-xl font-medium cursor-pointer">{user.name}</h3>
-                    <p className="text-lg text-[#919191]">{user.email}</p>
+    const navigate = useNavigate();
+
+    return <div className="h-[100vh] w-full bg-[#212121] pt-3">
+        <div className='flex item-start justify-between mx-3'>
+            <IoIosArrowBack className='m-1 mb-0 cursor-pointer' onClick={() => navigate("/")} size={22}/>
+        </div>
+        <div className="px-6 py-2">
+            <h1 className="text-xl font-medium pb-3">General</h1>
+            <h2 className="text-md font-medium pb-2">Account</h2>
+            {user ? <div className="flex flex-col">
+                <div className="flex items-center">
+                    <img className="rounded-full" src={user.user_metadata.avatar_url} width={80} height={80}/>
+                    <div className="flex flex-col p-4">
+                        <h3 className="text-md font-medium cursor-pointer">{user.user_metadata.full_name}</h3>
+                        <p className="text-sm text-[#919191]">{user.email}</p>
+                    </div>
                 </div>
-            </div>
-            <p
-            className="text-blue-400 cursor-pointer text-lg p-1"
-            onClick={handleLogout}
-            >Logout</p>
-        </div> : <div className="flex items-center">
-            <FaUserCircle size={80} />
-            <div className="flex flex-col p-4">
-                <h3 
-                    onClick={handleOpenOnboarding}
-                    className="text-xl font-medium text-blue-400 cursor-pointer">Login</h3>
-                <p className="text-lg text-[#919191]">Log in with Google account</p>
-            </div>
-        </div>}
+                <p
+                className="text-blue-400 cursor-pointer text-md p-1"
+                onClick={handleLogout}
+                >Logout</p>
+            </div> : <div className="flex items-center">
+                <FaUserCircle size={80} />
+                <div className="flex flex-col p-4">
+                    <h3 
+                        onClick={handleOpenOnboarding}
+                        className="text-md font-medium text-blue-400 cursor-pointer">Login</h3>
+                    <p className="text-sm text-[#919191]">Log in with Google account</p>
+                </div>
+            </div>}
+        </div>
     </div>
 }
-
-// Create entry script to render in setting.html
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <SettingPage />
-  </StrictMode>,
-);
 
 export default SettingPage;

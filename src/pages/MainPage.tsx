@@ -4,7 +4,6 @@ import {v4 as uuid} from 'uuid';
 import { hybridSearch, searchNotesByPrefix } from '../api/search';
 import generateEmbedding, { chatWithNotes } from '../api/openai';
 import { FaRegUserCircle } from "react-icons/fa";
-import { supabase } from '../lib/supabase';
 import { User } from '@supabase/supabase-js';
 import '../App.css';
 import { Note, Response } from '../types';
@@ -14,12 +13,12 @@ import { Suggestion, UserNote } from '../components/NoteChat/components';
 import { TbSettings } from "react-icons/tb";
 import { addResponses, fetchResponses } from '../api/responses';
 import KnowledgeBase from '../components/KnowledgeBase/KnowledgeBase';
+import { useNavigate } from 'react-router-dom';
 
-export function MainPage() {
+export function MainPage({user}: {user: User | null}) {
   const [editing, setEditing] = useState<Note | null>(null);
   const [notes, setNotes] = useState<Note[]>([]);
   const [responses, setResponses] = useState<Response[]>([]);
-  const [user, setUser] = useState<User | null>(null);
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [noteSuggestions, setNoteSuggestions] = useState<Note[]>([]);
@@ -295,18 +294,6 @@ export function MainPage() {
 
   useEffect(() => {
     syncNotes();
-    const { data } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN') {
-        if(!session?.user) return;
-        console.log('User signed in:', session?.user);
-        setUser(session?.user);
-      } else if (event == 'SIGNED_OUT') {
-        console.log('User signed out');
-        setUser(null);
-        setProfilePicture(null);
-      } 
-    });
-    return () => data.subscription.unsubscribe();  
   }, [])
 
   // Update notes and user info when user changes
@@ -365,8 +352,12 @@ export function MainPage() {
 
   const [deletingNote, setDeletingNote] = useState<Note|null>(null); // Delete confirmation note
 
-  const openSetting = () => {
-    chrome.tabs.create({ url: chrome.runtime.getURL("setting.html") });
+  const navigate = useNavigate();
+
+  const handleOpenSetting: React.MouseEventHandler = (e) => {
+    e.preventDefault();
+
+    navigate("/setting");
   };  
 
   const [showKnowledgeBase, setShowKnwledgeBase] = useState<{content: string, knowledgeBase: string[]} | null>(null);
@@ -443,7 +434,7 @@ export function MainPage() {
           <div className='flex justify-end p-3 items-center gap-2'>
             <TbSettings
               className='cursor-pointer'
-              onClick={()=>openSetting()}
+              onClick={handleOpenSetting}
               size={28}/>
             {profilePicture ? 
               <div
