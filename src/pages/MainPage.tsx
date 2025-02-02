@@ -25,10 +25,21 @@ export function MainPage({user}: {user: User | null}) {
   const [commandSuggestions, setCommandSuggestions] = useState<string[]>([]);
   const [input, setInput] = useState('');
 
+  const init = async () => {
+    setEditing(null);
+    setNotes([]);
+    setProfilePicture(null);
+    setNoteSuggestions([]);
+    setCommandSuggestions([]);
+    setInput('');
+    setResponses([]);
+  }
+
   /**
    * Update notes and user info
    */
   const update = async () => {
+    init();
     handleFetchNote();
     handleFetchResponses();
     // User picture
@@ -43,7 +54,8 @@ export function MainPage({user}: {user: User | null}) {
   async function handleFetchNote() {
     if(user) {
       syncNotes();
-      setNotes(await fetchNotes());
+      const fetchedNotes = await fetchNotes();
+      setNotes(fetchedNotes);
     } else {
       setNotes(getNotesFromLocalStorage());
     }
@@ -301,12 +313,15 @@ export function MainPage({user}: {user: User | null}) {
     update();
   }, [user]);
 
-  // Scroll to the bottom by default
   useEffect(() => {
     if (containerRef.current) {
-      containerRef.current.scrollTop = containerRef.current.scrollHeight;
+      setTimeout(() => {
+        if (containerRef.current) {
+          containerRef.current.scrollTop = containerRef.current.scrollHeight;
+        }
+      }, 1); // Small delay ensures DOM is updated
     }
-  }, [editing, notes])
+  }, [editing, notes]);
 
   const DeleteConfirmationPopup = ({note, onDelete, onCancel}: {note: Note, onDelete: () => void, onCancel: () => void}) => {
     const ref = useRef<HTMLDivElement>(null);

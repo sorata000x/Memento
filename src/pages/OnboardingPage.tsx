@@ -21,12 +21,16 @@ const OnboardingPage = () => {
   }, []);  
   
   const handleGoogleSignIn = async () => {
-    const redirectUri = `chrome-extension://${chrome.runtime.id}/index.html?auth=success`;
+    const redirectUri = `chrome-extension://${chrome.runtime.id}/index.html`;
     console.log(`redirectUri: ${redirectUri}`);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: redirectUri
+        redirectTo: redirectUri,
+        scopes: 'email profile', // Ensure necessary scopes are included
+        queryParams: {
+          prompt: 'select_account' // Forces Google to show the account selection screen
+        }
       }
     });
   

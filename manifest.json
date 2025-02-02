@@ -22,7 +22,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["onboarding.html", "onboarding.js", "static/*", "setting.html", "setting.js"],
+      "resources": ["index.html", "onboarding.html", "onboarding.js", "static/*", "setting.html", "setting.js"],
       "matches": ["<all_urls>"]
     }
   ],
