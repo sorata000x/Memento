@@ -40,8 +40,8 @@ export function MainPage({user}: {user: User | null}) {
    */
   const update = async () => {
     init();
-    handleFetchNote();
-    handleFetchResponses();
+    await handleFetchNote();
+    await handleFetchResponses();
     // User picture
     if (user) {
       const picture = user.user_metadata.avatar_url || user.user_metadata.picture;

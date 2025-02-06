@@ -1,6 +1,7 @@
 import ReactMarkdown from 'react-markdown';
 import icon from "../../assets/memento-icon.png";
 import { MdOutlineStickyNote2 } from "react-icons/md";
+import Markdown from 'react-markdown';
 
 export const Suggestion = ({text, onClick}: {text: string, onClick: () => void}) => {
     return (
@@ -15,7 +16,7 @@ export const Suggestion = ({text, onClick}: {text: string, onClick: () => void})
 export const UserNote = ({content, onClick}: {content: string, onClick?: () => void}) => {
     return (
       <div className="p-4 pt-2 pb-2 w-full user-Note cursor-pointer" onClick={onClick}>
-        <ReactMarkdown className="markdown">{content.replace(/\n/g, "  \n &nbsp;")}</ReactMarkdown>
+        <Markdown className="markdown">{content.replace(/\n/g, "  \n")}</Markdown>
         {/*<p className='text-end pt-1 text-[#565656]' style={{fontSize: "10pt"}}>{formattedDate}</p> */}
       </div>
     )
