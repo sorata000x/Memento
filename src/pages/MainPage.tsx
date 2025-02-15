@@ -16,6 +16,7 @@ import KnowledgeBase from '../components/KnowledgeBase/KnowledgeBase';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { addNoteToLocalStorage } from "../utility/localstoarge";
+import CircularProgress from "@mui/material/CircularProgress";
 
 export function MainPage ({user, setUser}: {user: User | null, setUser: (user: User | null) => void}) {
   const [editing, setEditing] = useState<Note | null>(null);
@@ -25,6 +26,7 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
   const [noteSuggestions, setNoteSuggestions] = useState<Note[]>([]);
   const [commandSuggestions, setCommandSuggestions] = useState<string[]>([]);
   const [input, setInput] = useState('');
+  const [isLoading, setLoading] = useState(false);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -62,9 +64,11 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
    * Update notes and user info
    */
   const update = async () => {
+    setLoading(true);
     init();
     await handleFetchNote();
     await handleFetchResponses();
+    setLoading(false);
   }
 
   /* Note Functions */
@@ -385,8 +389,17 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
 
   const [showKnowledgeBase, setShowKnwledgeBase] = useState<{content: string, knowledgeBase: string[]} | null>(null);
 
+  const Loading = () => {
+    return (
+      <div className="flex justify-center items-center h-screen absolute bg-[#212121] w-full">
+        <CircularProgress style={{ color: "white" }}/>
+      </div>
+    );
+  };
+
   return (
     <>
+      { isLoading ? <Loading /> : null}
       { deletingNote !== null ? 
         <DeleteConfirmationPopup 
           note={deletingNote!} 
