@@ -64,7 +64,7 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
    * Update notes and user info
    */
   const update = async () => {
-    setLoading(true);
+    if (user) setLoading(true);
     init();
     await handleFetchNote();
     await handleFetchResponses();
