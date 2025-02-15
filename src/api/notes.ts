@@ -25,7 +25,7 @@ export const addUserToDatabase = async (user: User) => {
     } catch (err) {
       console.error('Unexpected error:', err);
     }
-  };
+};
 
 export const handleAuth = async () => {
 

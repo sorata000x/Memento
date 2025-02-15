@@ -14,21 +14,44 @@ import { TbSettings } from "react-icons/tb";
 import { addResponses, fetchResponses } from '../api/responses';
 import KnowledgeBase from '../components/KnowledgeBase/KnowledgeBase';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
+import { addNoteToLocalStorage } from "../utility/localstoarge";
 
-export function MainPage({user}: {user: User | null}) {
+export function MainPage ({user, setUser}: {user: User | null, setUser: (user: User | null) => void}) {
   const [editing, setEditing] = useState<Note | null>(null);
   const [notes, setNotes] = useState<Note[]>([]);
   const [responses, setResponses] = useState<Response[]>([]);
-  const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [noteSuggestions, setNoteSuggestions] = useState<Note[]>([]);
   const [commandSuggestions, setCommandSuggestions] = useState<string[]>([]);
   const [input, setInput] = useState('');
 
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUser(user);
+      }
+    };
+    fetchUser();
+    // Listen to user change
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_IN') {
+            const user = session?.user;
+            if(!user) return;
+            console.log('User signed in:', session?.user);
+            setUser(user);
+        } else if (event == 'SIGNED_OUT') {
+            console.log('User signed out');
+            setUser(null);
+        } 
+    });
+    return () => data.subscription.unsubscribe();  
+}, []);
+
   const init = async () => {
     setEditing(null);
     setNotes([]);
-    setProfilePicture(null);
     setNoteSuggestions([]);
     setCommandSuggestions([]);
     setInput('');
@@ -42,23 +65,19 @@ export function MainPage({user}: {user: User | null}) {
     init();
     await handleFetchNote();
     await handleFetchResponses();
-    // User picture
-    if (user) {
-      const picture = user.user_metadata.avatar_url || user.user_metadata.picture;
-      setProfilePicture(picture || null);
-    }
   }
 
   /* Note Functions */
 
   async function handleFetchNote() {
+    let fetchedNotes: Note[];
     if(user) {
-      syncNotes();
-      const fetchedNotes = await fetchNotes();
-      setNotes(fetchedNotes);
+      await syncNotes();
+      fetchedNotes = await fetchNotes();
     } else {
-      setNotes(getNotesFromLocalStorage());
+      fetchedNotes = getNotesFromLocalStorage();
     }
+    setNotes(fetchedNotes);
   }
 
   async function handleAddNote(role: string, content: string) {
@@ -126,10 +145,6 @@ export function MainPage({user}: {user: User | null}) {
     return notes ? JSON.parse(notes) : [];
   }
 
-  const saveToLocalStorage = (notes: Note[]) => {
-    localStorage.setItem(user?.id || "guest", JSON.stringify(notes));
-  }
-
   // * Notes are being stored both in local storage and supabase.
   // * To enable offline note taking as well as preventing data lost
   // * before being stored in supabase.
@@ -142,8 +157,6 @@ export function MainPage({user}: {user: User | null}) {
     // Create a map for easier comparison
     const localMap = new Map(localNotes.map(note => [note.id, note]));
     const supabaseMap = new Map(supabaseNotes.map(note => [note.id, note]));
-    
-    const updatedLocalNotes: Note[] = [];
 
     // Compare and synchronize
     for (const [id, localNote] of localMap) {
@@ -155,20 +168,15 @@ export function MainPage({user}: {user: User | null}) {
         upsertNote({id: localNote.id, content: localNote.content, role: localNote.role, embedding: localNote.embedding, last_updated: localNote.last_updated});
       } else if (new Date(localNote.last_updated) < new Date(supabaseNote.last_updated)) {
         // Supabase note is newer
-        updatedLocalNotes.push(supabaseNote);
+        addNoteToLocalStorage(supabaseNote);
       }
     }
 
     // Handle notes that are only in Supabase
     for (const [id, supabaseNote] of supabaseMap) {
       if (!localMap.has(id)) {
-        updatedLocalNotes.push(supabaseNote);
+        addNoteToLocalStorage(supabaseNote);
       }
-    }
-
-    // Save updates to local storage
-    if (updatedLocalNotes.length > 0) {
-      saveToLocalStorage([...localNotes, ...updatedLocalNotes]);
     }
   }
 
@@ -451,10 +459,10 @@ export function MainPage({user}: {user: User | null}) {
               className='cursor-pointer'
               onClick={handleOpenSetting}
               size={28}/>
-            {profilePicture ? 
-              <div
-                className="h-5 w-5 rounded-full cursor-pointer bg-cover bg-center" 
-                style={{backgroundImage: `url(${profilePicture})`}}
+            {user ? 
+              <img
+                className="rounded-full cursor-pointer"
+                src={user.user_metadata.avatar_url} width={26} height={26}
                 onClick={handleOpenOnboarding}
                 />
               :
