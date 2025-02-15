@@ -22,7 +22,7 @@ const OnboardingPage = () => {
   
   const handleGoogleSignIn = async () => {
     await supabase.auth.signOut();
-    const redirectUri = `chrome-extension://${chrome.runtime.id}/index.html`;
+    const redirectUri = `chrome-extension://${chrome.runtime.id}/index.html?auth=success`;
     console.log(`redirectUri: ${redirectUri}`);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
