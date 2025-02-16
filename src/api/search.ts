@@ -26,7 +26,7 @@ export async function searchNotesByPrefix(prefix: string): Promise<Note[]> {
 export async function hybridSearch(
   query: string,
   embedding: number[]
-): Promise<Note[]> {
+): Promise<{ id: string; content: string; similarity: number; last_updated: string }[]> {
   const { data, error } = await supabase.auth.getUser();
   const userId = data?.user?.id;
   if (error || !userId) throw new Error('User not authenticated');
@@ -36,6 +36,7 @@ export async function hybridSearch(
       t_user_id: userId
   });
   if (searchError) throw searchError;
+  console.log(`search result: ${JSON.stringify(searchData)}`)
   return searchData;
 }
 

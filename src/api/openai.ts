@@ -28,11 +28,11 @@ type Note = {
 export async function chatWithNotes(input: string, notes: Note[]) {
   try {
     // Combine notes into a contextual string
-    const context = notes.map(note => `${note.content} (date: ${note.last_updated})`).join('\n\n');
+    let context = notes.map(note => `${note.content} (updated: ${note.last_updated})`).join(',');
 
     // Prepare the messages for the chat
     const messages: ChatCompletionMessageParam[] = [
-      { role: 'system', content: "Provide concise answer based on user's note"},
+      { role: 'system', content: "Provide concise answer based on user's notes"},
       { role: 'system', content: `User Notes:\n\n${context}` },
       { role: 'user', content: input },
     ];

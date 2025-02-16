@@ -18,10 +18,10 @@ export async function fetchResponses() {
 }
 
 // Add responses
-export async function addResponses({ content, embedding, knowledge_base_ids }: {
+export async function addResponses({ content, embedding, knowledge_base }: {
     content: string,
     embedding: number[],
-    knowledge_base_ids: string[]
+    knowledge_base: {id: string, similarity: number}[]
   }) {
     const { data, error } = await supabase.auth.getUser();
     const userId = data?.user?.id;
@@ -31,7 +31,7 @@ export async function addResponses({ content, embedding, knowledge_base_ids }: {
     try {
         const { data: responses, error: responsesError } = await supabase
             .from('responses')
-            .insert({ content, embedding, user_id: userId, knowledge_base_ids });
+            .insert({ content, embedding, user_id: userId, knowledge_base });
         if (responsesError || !responses) throw responsesError;
         return responses[0];
     } catch (e) {

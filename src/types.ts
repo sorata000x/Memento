@@ -11,7 +11,7 @@ export type Response = {
   content: string;
   created_at: string;
   embedding: number[];
-  knowledge_base_ids: string[];
+  knowledge_base: {id: string, similarity: number}[];
 };
 
 export type Message = {

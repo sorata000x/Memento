@@ -174,6 +174,10 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
     const localMap = new Map(localNotes.map(note => [note.id, note]));
     const supabaseMap = new Map(supabaseNotes.map(note => [note.id, note]));
 
+    console.log(`localNotes: ${JSON.stringify(
+      localNotes.map(n => `id: ${n.id}, content: ${n.content}, last_updated: ${n.last_updated}`))}, 
+      supabaseNotes: ${JSON.stringify(supabaseNotes.map(n => `id: ${n.id}, content: ${n.content}, last_updated: ${n.last_updated}`))}`)
+
     // Compare and synchronize
     for (const [id, localNote] of localMap) {
       const supabaseNote = supabaseMap.get(id);
@@ -204,10 +208,11 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
     }
   }
 
-  async function handleAddResponse(content: string, knowledge_base_ids: string[]) {
+  async function handleAddResponse(content: string, knowledge_base: {id: string, similarity: number}[]) {
     const id = uuid();
     const created_at = new Date().toISOString();
     const embedding = await generateEmbedding(content);
+    console.log(`knoeledaslpdlapsldpalpd: ${JSON.stringify(knowledge_base)}`)
     setResponses((prev) => [
       ...prev,
       {
@@ -215,14 +220,14 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
         content,
         embedding,
         created_at,
-        knowledge_base_ids
+        knowledge_base,
       },
     ]);
     // Store in database
     await addResponses({
       content,
       embedding,
-      knowledge_base_ids
+      knowledge_base,
     });
   }
 
@@ -233,10 +238,10 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
   }  
 
   async function handleChat(input: string) {
-    const notes = await handleHybridSearch(input);
+    const data = await handleHybridSearch(input);
     const response = await chatWithNotes(input, notes);
     if(!response) return;
-    handleAddResponse(response, notes.map(n => n.id));
+    handleAddResponse(response, data);
   }
 
   const handleInputChange: React.ChangeEventHandler<HTMLInputElement> = async (e) => {
@@ -407,7 +412,7 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
     navigate("/setting");
   };  
 
-  const [showKnowledgeBase, setShowKnwledgeBase] = useState<{content: string, knowledgeBase: string[]} | null>(null);
+  const [showKnowledgeBase, setShowKnowledgeBase] = useState<{content: string, knowledgeBase: string[]} | null>(null);
 
   const Loading = () => {
     return (
@@ -449,9 +454,9 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
           {showKnowledgeBase && <KnowledgeBase 
             content={showKnowledgeBase.content} 
             knowledgeBase={showKnowledgeBase.knowledgeBase}
-            close={() => setShowKnwledgeBase(null)}
+            close={() => setShowKnowledgeBase(null)}
           />}
-          {!editing && !showKnowledgeBase && <NoteChat notes={notes} responses={responses} onNoteClick={(note) => {setEditing(note)}} openKnowledgeBase={(content, knowledgeBase) => setShowKnwledgeBase({content, knowledgeBase})}/>}
+          {!editing && !showKnowledgeBase && <NoteChat notes={notes} responses={responses} onNoteClick={(note) => {setEditing(note)}} openKnowledgeBase={(content, knowledgeBase) => setShowKnowledgeBase({content, knowledgeBase})}/>}
         </div>
         {
           noteSuggestions.length > 0 || commandSuggestions.length > 0 ? 
