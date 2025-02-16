@@ -54,30 +54,30 @@ const SettingPage = ({user, setUser}: {user: User | null, setUser: (user: User |
     const navigate = useNavigate();
 
     return <div className="h-[100vh] w-full bg-[#212121] pt-3">
-        <div className='flex item-start justify-between mx-3'>
-            <IoIosArrowBack className='m-1 mb-0 cursor-pointer' onClick={() => navigate("/")} size={22}/>
+        <div className='flex items-start mx-3'>
+            <IoIosArrowBack className='m-[0.33rem] mr-2 cursor-pointer' onClick={() => navigate("/")} size={22}/>
+            <h1 className="text-xl font-medium pb-3">General</h1>
         </div>
         <div className="px-6 py-2">
-            <h1 className="text-xl font-medium pb-3">General</h1>
-            <h2 className="text-md font-medium pb-2">Account</h2>
+            <h2 className="text-lg font-medium pb-2">Account</h2>
             {user ? <div className="flex flex-col">
                 <div className="flex items-center">
                     <img className="rounded-full" src={user.user_metadata.avatar_url} width={80} height={80}/>
-                    <div className="flex flex-col p-4">
-                        <h3 className="text-md font-medium cursor-pointer">{user.user_metadata.full_name}</h3>
+                    <div className="flex flex-col p-4 pr-0">
+                        <h3 className="text-base font-medium cursor-pointer">{user.user_metadata.full_name}</h3>
                         <p className="text-sm text-[#919191]">{user.email}</p>
                     </div>
                 </div>
                 <p
-                className="text-blue-400 cursor-pointer text-md p-1"
+                className="text-blue-400 cursor-pointer text-base p-1"
                 onClick={handleLogout}
                 >Logout</p>
             </div> : <div className="flex items-center">
-                <FaUserCircle size={80} />
-                <div className="flex flex-col p-4">
+                <FaUserCircle size={66} />
+                <div className="flex flex-col p-4 pr-0">
                     <h3 
                         onClick={handleOpenOnboarding}
-                        className="text-md font-medium text-blue-400 cursor-pointer">Login</h3>
+                        className="text-base font-medium text-blue-400 cursor-pointer">Login</h3>
                     <p className="text-sm text-[#919191]">Log in with Google account</p>
                 </div>
             </div>}

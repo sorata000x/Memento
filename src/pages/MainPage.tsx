@@ -212,7 +212,6 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
     const id = uuid();
     const created_at = new Date().toISOString();
     const embedding = await generateEmbedding(content);
-    console.log(`knoeledaslpdlapsldpalpd: ${JSON.stringify(knowledge_base)}`)
     setResponses((prev) => [
       ...prev,
       {
