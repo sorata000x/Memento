@@ -27,6 +27,7 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
   const [commandSuggestions, setCommandSuggestions] = useState<string[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setLoading] = useState(false);
+  const [isComposing, setIsComposing] = useState(false);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -289,8 +290,9 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
         setInput(command + note);
       }
     } 
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && !isComposing) {
       const input = (e.target as HTMLInputElement).value; // Cast e.target
+      setInput("");
       if (input) {
         // Command
         if (input.startsWith('/open ')) {
@@ -308,7 +310,6 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
           setEditing(null); // Close note editor
         }
         //(e.target as HTMLInputElement).value = ""; // Clear the input field
-        setInput("");
       }
     }
   };  
@@ -473,6 +474,8 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
                 value={input}
                 onKeyDown={handleKeyDown}
                 onChange={handleInputChange}
+                onCompositionStart={() => setIsComposing(true)}
+                onCompositionEnd={() => setIsComposing(false)}
                 />
             </div>
           </div>
@@ -485,6 +488,8 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
             value={input}
             onKeyDown={handleKeyDown}
             onChange={handleInputChange}
+            onCompositionStart={() => setIsComposing(true)}
+            onCompositionEnd={() => setIsComposing(false)}
             />
           <div className='flex justify-end p-3 items-center gap-2'>
             <TbSettings
