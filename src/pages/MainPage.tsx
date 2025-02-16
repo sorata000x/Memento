@@ -33,6 +33,17 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setUser(user);
+      } else {
+        const { data, error } = await supabase.auth.signUp({
+          email: `guest-${Date.now()}@temp.com`,
+          password: uuid()
+        });
+        if (error) {
+          console.error('Signup error:', error.message);
+        } else {
+          console.log('User signed up:', data.user);
+        }
+        setUser(data.user);
       }
     };
     fetchUser();
@@ -302,7 +313,15 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
     }
   };  
 
-  const handleOpenOnboarding: React.MouseEventHandler = (e) => {
+  const handleOpenOnboarding: React.MouseEventHandler = async (e) => {
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      console.error('Error logging out:', error.message);
+    } else {
+      console.log('Successfully logged out!');
+    }
+
     e.preventDefault();
 
     // Define the URL of the onboarding page
