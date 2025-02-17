@@ -2,6 +2,7 @@ import ReactMarkdown from 'react-markdown';
 import icon from "../../assets/memento-icon.png";
 import { MdOutlineStickyNote2 } from "react-icons/md";
 import Markdown from 'react-markdown';
+import { CircularProgress } from '@mui/material';
 
 export const Suggestion = ({text, onClick}: {text: string, onClick: () => void}) => {
     return (
@@ -26,18 +27,23 @@ export const AssistantNote = ({content, onClick}: {content: string, onClick?: ()
   return (
     <div className="flex py-2 px-4 w-ful" style={{backgroundColor: "#191919"}}>
       <img height={14} width={14} className='mr-2 mt-[0.2rem] flex-shrink-0' style={{ width: '14px', height: '14px' }} src={icon} alt="icon"/>
-      <div className="flex flex-col">
-        <ReactMarkdown className="markdown">{content.replace(/\n/g, "  \n")}</ReactMarkdown>
-        {
-          onClick ? 
-          <div 
-            onClick={onClick}
-            className="flex items-center gap-1 text-xm text-[#919191] cursor-pointer">
-            <MdOutlineStickyNote2 />
-            Knowledge Base
-          </div> : null
-        }
-      </div>
+      {
+        content.length == 0 ? 
+        <CircularProgress size={18} style={{ color: "white" }}/>
+        :
+        <div className="flex flex-col">
+          <ReactMarkdown className="markdown">{content.replace(/\n/g, "  \n")}</ReactMarkdown>
+          {
+            onClick ? 
+            <div 
+              onClick={onClick}
+              className="flex items-center gap-1 text-xm text-[#919191] cursor-pointer">
+              <MdOutlineStickyNote2 />
+              Knowledge Base
+            </div> : null
+          }
+        </div>
+      }
     </div>
   )
 }

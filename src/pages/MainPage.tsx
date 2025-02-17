@@ -208,12 +208,11 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
     }
   }
 
-  async function handleAddResponse(content: string, knowledge_base: {id: string, similarity: number}[]) {
-    const id = uuid();
+  async function handleAddResponse(id: string, content: string, knowledge_base: {id: string, similarity: number}[]) {
     const created_at = new Date().toISOString();
     const embedding = await generateEmbedding(content);
     setResponses((prev) => [
-      ...prev,
+      ...prev.slice(0, -1),
       {
         id,
         content,
@@ -237,10 +236,21 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
   }  
 
   async function handleChat(input: string) {
+    const id = uuid();
+    setResponses((prev) => [
+      ...prev,
+      {
+        id,
+        content: "",
+        embedding: [],
+        created_at: new Date().toISOString(),
+        knowledge_base: [],
+      },
+    ]);
     const data = await handleHybridSearch(input);
     const response = await chatWithNotes(input, notes);
     if(!response) return;
-    handleAddResponse(response, data);
+    handleAddResponse(id, response, data);
   }
 
   const handleInputChange: React.ChangeEventHandler<HTMLInputElement> = async (e) => {
@@ -307,7 +317,7 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
         else if (input.startsWith(' ')) {
           // Search notes if first two characters are spaces
           await handleAddNote('user', input.trim());
-          handleChat(input.trim());
+          await handleChat(input.trim());
           setEditing(null); // Close note editor
         } else {
           handleAddNote('user', input);
@@ -455,7 +465,21 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
             knowledgeBase={showKnowledgeBase.knowledgeBase}
             close={() => setShowKnowledgeBase(null)}
           />}
-          {!editing && !showKnowledgeBase && <NoteChat notes={notes} responses={responses} onNoteClick={(note) => {setEditing(note)}} openKnowledgeBase={(content, knowledgeBase) => setShowKnowledgeBase({content, knowledgeBase})}/>}
+          {!editing && !showKnowledgeBase && 
+            <NoteChat 
+              notes={notes} 
+              responses={responses}
+              onNoteClick={(note) => {setEditing(note)}} 
+              openKnowledgeBase={(content, knowledgeBase) => {
+                const knowledgeBaseStr: string[] = []
+                for (let i=0; i<knowledgeBase.length; i++) {
+                  const note = notes.find(n => n.id == knowledgeBase[i].id);
+                  if (note) {
+                    knowledgeBaseStr.push(`${note.content}\n\n[S: ${knowledgeBase[i].similarity}]`)
+                  }
+                }
+                setShowKnowledgeBase({content, knowledgeBase: knowledgeBaseStr})
+              }}/>}
         </div>
         {
           noteSuggestions.length > 0 || commandSuggestions.length > 0 ? 

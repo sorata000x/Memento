@@ -11,7 +11,7 @@ const NoteChat = ({
   notes: Note[], 
   responses: Response[],
   onNoteClick: (n: Note | null) => void,
-  openKnowledgeBase: (content: string, knowledgeBase: string[]) => void,
+  openKnowledgeBase: (content: string, knowledgeBase: {id: string, similarity: number}[]) => void,
 }) => {
   const [messages, setMessages] = useState<Message[]>([]);
 
@@ -54,15 +54,7 @@ const NoteChat = ({
           components.push(<UserNote key={m.id} content={m.content} onClick={() => onNoteClick(notes.find(n => n.id == m.id) || null)}/>)
         } 
         if (m.type == 'response') {
-          const knowledgeBase = responses.find(r => r.id == m.id)?.knowledge_base || [];
-          const knowledgeBaseStr: string[] = []
-          for (let i=0; i<knowledgeBase.length; i++) {
-            const note = notes.find(n => n.id == knowledgeBase[i].id);
-            if (note) {
-              knowledgeBaseStr.push(`${note.content}\n\n[S: ${knowledgeBase[i].similarity}]`)
-            }
-          }
-          components.push(<AssistantNote key={m.id} content={m.content} onClick={() => openKnowledgeBase(m.content, knowledgeBaseStr)} />)
+          components.push(<AssistantNote key={m.id} content={m.content} onClick={() => openKnowledgeBase(m.content, responses.find(r => r.id == m.id)?.knowledge_base || [])} />)
         }
         return components;
       })
