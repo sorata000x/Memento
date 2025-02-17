@@ -511,7 +511,7 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
         }
         <div className="p-3 pt-0 pb-0">
           <input 
-            className="h-12 flex-shrink-0 w-full rounded-lg focus:outline-none p-3"
+            className="h-12 flex-shrink-0 w-full rounded-lg focus:outline-none p-3 text-sm"
             style={{backgroundColor: "#2f2f2f"}}
             value={input}
             onKeyDown={handleKeyDown}
@@ -519,6 +519,19 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
             onCompositionStart={() => setIsComposing(true)}
             onCompositionEnd={() => setIsComposing(false)}
             />
+          {/* Fake placeholder */}
+          {input == ' ' && (
+            <div
+              className='absolute bottom-[3.2rem] left-[1.85rem] text-sm'
+              style={{
+                transform: 'translateY(-50%)',
+                pointerEvents: 'none', // Ensure clicks pass through to the input
+                color: '#888', // Placeholder-like color
+              }}
+            >
+              Ask AI anything...
+            </div>
+          )}
           <div className='flex justify-end p-3 items-center gap-2'>
             <TbSettings
               className='cursor-pointer'
