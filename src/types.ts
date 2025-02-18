@@ -4,6 +4,7 @@ export type Note = {
   role: string;
   last_updated: string;
   embedding: number[];
+  file_paths: string[];
 };
 
 export type Response = {
@@ -19,4 +20,5 @@ export type Message = {
   content: string;
   time: string;
   type: string;
+  file_paths?: string[];
 }

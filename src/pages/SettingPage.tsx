@@ -5,13 +5,14 @@ import '../App.css';
 import { User } from "@supabase/supabase-js";
 import { IoIosArrowBack } from "react-icons/io";
 import { useNavigate } from "react-router-dom";
+import {v4 as uuid} from 'uuid';
 
 const SettingPage = ({user, setUser}: {user: User | null, setUser: (user: User | null) => void}) => {
 
     useEffect(() => {
         const fetchUser = async () => {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
+          const { data: { user: suser } } = await supabase.auth.getUser();
+          if (suser && user != suser) {
             setUser(user);
           }
         };
@@ -19,10 +20,11 @@ const SettingPage = ({user, setUser}: {user: User | null, setUser: (user: User |
         // Listen to user change
         const { data } = supabase.auth.onAuthStateChange((event, session) => {
             if (event === 'SIGNED_IN') {
-                const user = session?.user;
-                if(!user) return;
+                if (!session?.user || session?.user?.id === user?.id) return; 
+                const suser = session?.user;
+                if(!suser) return;
                 console.log('User signed in:', session?.user);
-                setUser(user);
+                setUser(suser);
             } else if (event == 'SIGNED_OUT') {
                 console.log('User signed out');
                 setUser(null);
@@ -50,6 +52,19 @@ const SettingPage = ({user, setUser}: {user: User | null, setUser: (user: User |
           "width=400,height=600,scrollbars=yes,resizable=yes"
         );
     };
+
+    const anonymousSignUp = async () => {
+        const { data, error } = await supabase.auth.signUp({
+            email: `test-${Date.now()}@temp.com`,
+            password: uuid()
+        });
+        if (error) {
+            console.error('Signup error:', error.message);
+        } else {
+            console.log('User signed up:', data.user);
+        }
+        setUser(data.user);
+    }
 
     const navigate = useNavigate();
 
@@ -81,6 +96,7 @@ const SettingPage = ({user, setUser}: {user: User | null, setUser: (user: User |
                     <p className="text-sm text-[#919191]">Log in with Google account</p>
                 </div>
             </div>}
+            <button className="bg-[#555555] p-3 py-2 mt-5" onClick={()=>anonymousSignUp()}>Anonymous Sign In (Test)</button>
         </div>
     </div>
 }

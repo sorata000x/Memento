@@ -102,10 +102,11 @@ export async function fetchNotes() {
 }
 
 // Add note
-export async function addNote({ role, content, embedding }: {
+export async function addNote({ role, content, embedding, filePaths }: {
     role: string,
     content: string,
     embedding: number[],
+    filePaths: string[],
   }) {
     const { data, error } = await supabase.auth.getUser();
     const userId = data?.user?.id;
@@ -115,7 +116,7 @@ export async function addNote({ role, content, embedding }: {
     try {
         const { data: note, error: noteError } = await supabase
             .from('notes')
-            .insert({ role, content, embedding, user_id: userId });
+            .insert({ role, content, embedding, user_id: userId, file_paths: filePaths });
         if (noteError || !note) throw noteError;
         return note[0];
     } catch (e) {

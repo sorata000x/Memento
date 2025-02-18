@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Message, Note, Response } from "../../types";
 import { AssistantNote, ChatDateDivider, UserNote } from "./components";
+import {v4 as uuid} from 'uuid';
 
 const NoteChat = ({
   notes, 
@@ -22,6 +23,7 @@ const NoteChat = ({
         content: n.content,
         time: n.last_updated,
         type: "note",
+        file_paths: n.file_paths
       })),
       ...responses.map(r => ({
         id: r.id,
@@ -48,10 +50,10 @@ const NoteChat = ({
         }).format(date);
         if(!last_date || last_date !== formattedDate) {
           last_date = formattedDate;
-          components.push(<ChatDateDivider date={last_date} />)
+          components.push(<ChatDateDivider key={uuid()} date={last_date} />)
         }
         if (m.type == 'note') {
-          components.push(<UserNote key={m.id} content={m.content} onClick={() => onNoteClick(notes.find(n => n.id == m.id) || null)}/>)
+          components.push(<UserNote key={m.id} content={m.content} filePaths={m.file_paths || []} onClick={() => onNoteClick(notes.find(n => n.id == m.id) || null)}/>)
         } 
         if (m.type == 'response') {
           components.push(<AssistantNote key={m.id} content={m.content} onClick={() => openKnowledgeBase(m.content, responses.find(r => r.id == m.id)?.knowledge_base || [])} />)

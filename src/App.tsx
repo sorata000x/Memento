@@ -11,7 +11,7 @@ function App() {
   useEffect(() => {
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN') {
-        if(!session?.user) return;
+        if (!session?.user || session?.user?.id === user?.id) return; 
         console.log('User signed in:', session?.user);
         setUser(session?.user);
         const url = new URL(window.location.href);

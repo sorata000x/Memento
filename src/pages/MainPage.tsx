@@ -17,6 +17,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { addNoteToLocalStorage } from "../utility/localstoarge";
 import CircularProgress from "@mui/material/CircularProgress";
+import { IoIosClose } from "react-icons/io";
 
 export function MainPage ({user, setUser}: {user: User | null, setUser: (user: User | null) => void}) {
   const [editing, setEditing] = useState<Note | null>(null);
@@ -31,37 +32,27 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
 
   useEffect(() => {
     const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setUser(user);
-      } else {
-        const { data, error } = await supabase.auth.signUp({
-          email: `guest-${Date.now()}@temp.com`,
-          password: uuid()
-        });
-        if (error) {
-          console.error('Signup error:', error.message);
-        } else {
-          console.log('User signed up:', data.user);
-        }
-        setUser(data.user);
-      }
+      const { data: { user: suser } } = await supabase.auth.getUser();
+      if (suser && user != suser) {
+        setUser(suser);
+      } 
     };
     fetchUser();
     // Listen to user change
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
         if (event === 'SIGNED_IN') {
-            const user = session?.user;
-            if(!user) return;
+            if (!session?.user || session?.user?.id === user?.id) return; 
+            const suser = session?.user;
+            if(!suser) return;
             console.log('User signed in:', session?.user);
-            setUser(user);
+            setUser(suser);
         } else if (event == 'SIGNED_OUT') {
             console.log('User signed out');
             setUser(null);
         } 
     });
     return () => data.subscription.unsubscribe();  
-}, []);
+  }, []);
 
   const init = async () => {
     setEditing(null);
@@ -96,7 +87,7 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
     setNotes(fetchedNotes);
   }
 
-  async function handleAddNote(role: string, content: string) {
+  async function handleAddNote(role: string, content: string, file_paths: string[]) {
     const id = uuid();
     const last_updated = new Date().toISOString();
     const embedding = await generateEmbedding(content);
@@ -107,7 +98,8 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
         content,
         embedding,
         role,
-        last_updated
+        last_updated,
+        file_paths,
       },
     ]);
     // Store in local storage to prevent data lost
@@ -118,7 +110,8 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
     await addNote({
       role,
       content,
-      embedding
+      embedding,
+      filePaths: file_paths
     });
   }
 
@@ -173,10 +166,6 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
     // Create a map for easier comparison
     const localMap = new Map(localNotes.map(note => [note.id, note]));
     const supabaseMap = new Map(supabaseNotes.map(note => [note.id, note]));
-
-    console.log(`localNotes: ${JSON.stringify(
-      localNotes.map(n => `id: ${n.id}, content: ${n.content}, last_updated: ${n.last_updated}`))}, 
-      supabaseNotes: ${JSON.stringify(supabaseNotes.map(n => `id: ${n.id}, content: ${n.content}, last_updated: ${n.last_updated}`))}`)
 
     // Compare and synchronize
     for (const [id, localNote] of localMap) {
@@ -306,7 +295,9 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
     } 
     if (e.key === "Enter" && !isComposing) {
       const input = (e.target as HTMLInputElement).value; // Cast e.target
+      const tfiles = files.map(f => f.path);
       setInput("");
+      setFiles([]);
       if (input) {
         // Command
         if (input.startsWith('/open ')) {
@@ -316,11 +307,11 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
         }
         else if (input.startsWith(' ')) {
           // Search notes if first two characters are spaces
-          await handleAddNote('user', input.trim());
+          await handleAddNote('user', input.trim(), tfiles);
           await handleChat(input.trim());
           setEditing(null); // Close note editor
         } else {
-          handleAddNote('user', input);
+          await handleAddNote('user', input, tfiles);
           setEditing(null); // Close note editor
         }
         //(e.target as HTMLInputElement).value = ""; // Clear the input field
@@ -350,9 +341,9 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
     );
   };
 
-  useEffect(() => {
+  /*useEffect(() => {
     syncNotes();
-  }, [])
+  }, [])*/
 
   // Update notes and user info when user changes
   useEffect(() => {
@@ -371,8 +362,6 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
 
   const DeleteConfirmationPopup = ({note, onDelete, onCancel}: {note: Note, onDelete: () => void, onCancel: () => void}) => {
     const ref = useRef<HTMLDivElement>(null);
-
-    console.log(`note: ${note}`)
 
     useEffect(() => {
       const handleClickOutside = (event: MouseEvent) => {
@@ -394,7 +383,7 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
         <h1 className='text-base font-semibold'>Delete Note</h1>
         <p className='py-2'>Are you sure you want to delete this note?</p>
         <div className='border border-[#515151] rounded-md my-3 mb-6'>
-          <UserNote content={note.content} />
+          <UserNote content={note.content} filePaths={note.file_paths} />
         </div>
         <div className='grow'/>
         <div className='flex justify-end font-semibold'>
@@ -408,8 +397,6 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
       </div>
     </div>
   }
-
-  useEffect(() => {console.log(`responses: ${responses}`)}, [responses])
 
   const [deletingNote, setDeletingNote] = useState<Note|null>(null); // Delete confirmation note
 
@@ -431,8 +418,43 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
     );
   };
 
+  const handleDrop = async (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const file = event.dataTransfer.files[0];
+
+    if (file && user) {
+      const id = uuid();
+      const sanitizedFileName = file.name.replace(/\s+/g, "_").replace(/[^a-zA-Z0-9.-]/g, "");
+      const path = `${user.id}/${id}/${sanitizedFileName}`;
+      let url = '';
+
+      // Upload to Supabase Storage
+      const { error } = await supabase.storage
+        .from("files")
+        .upload(path, file, { cacheControl: "3600", upsert: true });
+
+      if (error) {
+        console.error("Upload error:", error);
+        return;
+      }
+
+      const { data: urlData } = await supabase.storage
+        .from("files")
+        .createSignedUrl(`${user.id}/${id}/${sanitizedFileName}`, 60 * 60 * 24);
+
+      if (urlData) url = urlData.signedUrl;
+
+      setFiles((prev) => [...prev, {name: file.name, path, url}]);
+    }
+  };
+
+  const [files, setFiles] = useState<{name: string, path: string, url: string}[]>([]);
+
   return (
-    <>
+    <div onDrop={handleDrop}
+    onDragOver={(event) => {
+      event.preventDefault();
+    }}>
       { isLoading ? <Loading /> : null}
       { deletingNote !== null ? 
         <DeleteConfirmationPopup 
@@ -454,7 +476,6 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
             confirmDelete={() => setDeletingNote(editing)}
             onChange={async (e) => {
               const value = e.target.value;
-              console.log(`value: ${value}`);
               const embedding = await generateEmbedding(value);
               handleUpdateNote(editing.id, value, embedding);
             }} 
@@ -509,6 +530,38 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
           </div>
           : null
         }
+        {
+          files.length > 0 ? 
+          <div className='w-full absolute bottom-[5rem] left-0 p-3 overflow-hidden'>
+            <div className='flex flex-col rounded-lg border-b' style={{ backgroundColor: "#2f2f2f"}}>
+              <div className='flex rounded-lg overflow-scroll gap-3 p-3'>
+              {files.map((file, index) => (
+                <div key={index} className="flex flex-col p-2 rounded-md bg-[#212121] max-w-[10rem] max-h-[10rem] relative justify-between gap-1">
+                  <IoIosClose 
+                    className='absolute right-0 bg-black top-0 transform translate-x-[20%] -translate-y-[20%] rounded-full cursor-pointer' 
+                    size={30}
+                    onClick={()=>setFiles((prev) => prev.filter((_, i) => i !== index))}/>
+                  {file.name.endsWith(".jpg") || file.name.endsWith(".png") || file.name.endsWith(".jpeg") ? (
+                    <div className='flex justify-center'>
+                      <img src={file.url} alt={file.name} className="max-w-[9rem] max-h-[7rem] rounded-md"/>
+                    </div>
+                  ) : file.url.endsWith(".mp4") ? (
+                    <video src={file.url} controls className="max-w-xs" />
+                  ) : file.url.endsWith(".pdf") ? (
+                    <embed src={file.url} type="application/pdf" className="max-w-xs" />
+                  ) : (
+                    <a href={file.url} target="_blank" rel="noopener noreferrer">
+                      Open File
+                    </a>
+                  )}
+                  <p className='truncate'>{file.name}</p>
+                </div>
+              ))}
+              </div>
+            </div>
+          </div>
+          : null
+        }
         <div className="p-3 pt-0 pb-0">
           <input 
             className="h-12 flex-shrink-0 w-full rounded-lg focus:outline-none p-3 text-sm"
@@ -553,6 +606,6 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
         </div>
       </div>
       </div>
-    </>
+    </div>
   );
 }
