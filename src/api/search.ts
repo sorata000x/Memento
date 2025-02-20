@@ -13,7 +13,7 @@ export async function searchNotesByPrefix(prefix: string): Promise<Note[]> {
 
   const { data: notes, error: notesError } = await supabase
     .from("notes")
-    .select("id, content, role, last_updated, embedding")
+    .select("id, content, role, last_updated, embedding, file_paths")
     .eq('user_id', userId)
     .eq('role', 'user')
     .ilike("content", `${prefix}%`) // Case-insensitive matching for prefix

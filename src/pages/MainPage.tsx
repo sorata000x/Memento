@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { addNote, deleteNote, fetchNotes, updateNote, upsertNote } from '../api/notes';
+import { deleteNote, fetchNotes, updateNote, upsertNote } from '../api/notes';
 import {v4 as uuid} from 'uuid';
 import { hybridSearch, searchNotesByPrefix } from '../api/search';
 import generateEmbedding, { chatWithNotes } from '../api/openai';
@@ -15,7 +15,6 @@ import { addResponses, fetchResponses } from '../api/responses';
 import KnowledgeBase from '../components/KnowledgeBase/KnowledgeBase';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { addNoteToLocalStorage } from "../utility/localstoarge";
 import CircularProgress from "@mui/material/CircularProgress";
 import { IoIosClose } from "react-icons/io";
 
@@ -106,12 +105,14 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
     const storedData = localStorage.getItem(user?.id || "guest");
     const localNotes = storedData ? JSON.parse(storedData) : [];
     localNotes.push({id, role: "user", content, embedding, last_updated});
+    localStorage.setItem(user?.id || "guest", JSON.stringify(localNotes));
     // Store in database
-    await addNote({
+    await upsertNote({
+      id,
       role,
       content,
       embedding,
-      filePaths: file_paths
+      last_updated
     });
   }
 
@@ -175,16 +176,6 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
         // Local note is newer or does not exist in Supabase
         // Update or insert to supabase
         upsertNote({id: localNote.id, content: localNote.content, role: localNote.role, embedding: localNote.embedding, last_updated: localNote.last_updated});
-      } else if (new Date(localNote.last_updated) < new Date(supabaseNote.last_updated)) {
-        // Supabase note is newer
-        addNoteToLocalStorage(supabaseNote);
-      }
-    }
-
-    // Handle notes that are only in Supabase
-    for (const [id, supabaseNote] of supabaseMap) {
-      if (!localMap.has(id)) {
-        addNoteToLocalStorage(supabaseNote);
       }
     }
   }

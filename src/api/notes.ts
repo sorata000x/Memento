@@ -47,10 +47,6 @@ export const handleAuth = async () => {
     const user = session.user;
 
     if (user) {
-        console.log('User ID:', user.id);
-        console.log('User Email:', user.email);
-        console.log('User Access Token:', session.access_token);
-
         // Re-initialize Supabase client with user access token
         const supabaseWithAuth = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
             global: {
@@ -134,8 +130,7 @@ export async function updateNote(id: string, content: string, embedding: number[
     const { data: updatedNote, error: updateError } = await supabase
         .from('notes')
         .update({ content, embedding, last_updated })
-        .eq('id', id)
-        .eq('user_id', userId); // Ensures the note belongs to the user
+        .eq('id', id); // Ensures the note belongs to the user
 
     if (updateError || !updatedNote) throw updateError;
     return updatedNote[0];
@@ -146,7 +141,7 @@ export async function upsertNote({
     role,
     content,
     embedding,
-    last_updated
+    last_updated,
 }: {
     id?: string; // Optional, if not provided, it will add a new note
     role: string;
@@ -180,8 +175,8 @@ export async function upsertNote({
       // If no id is provided or the update didn't find a matching note, insert a new note
       const { data: newNote, error: insertError } = await supabase
         .from('notes')
-        .insert({ role, content, embedding, user_id: userId, last_updated })
-        .select();
+        .insert({ id, role, content, embedding, user_id: userId, last_updated })
+        .select('*');
   
       if (insertError) throw insertError;
   

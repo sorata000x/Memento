@@ -6,7 +6,6 @@ import { CircularProgress } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { FileObject } from "@supabase/storage-js";
-import { IoIosClose } from 'react-icons/io';
 
 export const Suggestion = ({text, onClick}: {text: string, onClick: () => void}) => {
     return (
@@ -18,6 +17,7 @@ export const Suggestion = ({text, onClick}: {text: string, onClick: () => void})
     )
 }
 
+/*
 const URLCard = (preview) => {
   return (
     <div>
@@ -37,6 +37,7 @@ const URLCard = (preview) => {
     </div>
   )
 }
+*/
 
 export const UserNote = ({content, filePaths, onClick}: {content: string, filePaths: string[], onClick?: () => void}) => {
   const [fileData, setFileData] = useState<{path: string, metadata: FileObject | undefined, url: string | undefined}[]>([]);
