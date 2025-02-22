@@ -16,7 +16,7 @@ import KnowledgeBase from '../components/KnowledgeBase/KnowledgeBase';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { IoIosClose } from "react-icons/io";
-import { addNoteToLocalStorage, addResponseToLocalStorage } from '../utility/localstoarge';
+import { upsertNoteToLocalStorage, upsertResponseToLocalStorage } from '../utility/localstoarge';
 
 export function MainPage ({user, setUser}: {user: User | null, setUser: (user: User | null) => void}) {
   const [editing, setEditing] = useState<Note | null>(null);
@@ -101,7 +101,7 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
       },
     ]);
     // Store in local storage to prevent data lost
-    addNoteToLocalStorage(user, {id, content, embedding, role, last_updated, file_paths});
+    upsertNoteToLocalStorage(user, {id, content, embedding, role, last_updated, file_paths});
     // Store in database
     await upsertNote({
       id,
@@ -125,7 +125,7 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
     }
     setNotes(newNotes);
     // Store in local storage to prevent data lost
-    addNoteToLocalStorage(user, {id, role: "user", content, last_updated: updateTime, file_paths: []})
+    upsertNoteToLocalStorage(user, {id, role: "user", content, last_updated: updateTime, file_paths: []})
     // Store in supabase
     updateNote(id, content, embedding, updateTime);
   }
@@ -144,19 +144,14 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
   const getNotesFromLocalStorage = (): Note[] => {
     let storedNotesStr = localStorage.getItem(`${user?.id}-notes` || "guest-notes");
     if(!storedNotesStr) return [];
-    let storedNotesListStr = JSON.parse(storedNotesStr);
-    if (!storedNotesListStr) return [];
-    let storedNotes = storedNotesListStr.map((n: string) => JSON.parse(n));
+    let storedNotes = JSON.parse(storedNotesStr);
     return storedNotes;
   }
 
   const getResponsesFromLocalStorage = (): Response[] => {
     let storedResponsesStr = localStorage.getItem(`${user?.id}-responses` || "guest-responses");
     if(!storedResponsesStr) return [];
-    let storedResponsesListStr = JSON.parse(storedResponsesStr);
-    if (!storedResponsesListStr) return [];
-    if (!storedResponsesListStr) return [];
-    let storedResponses = storedResponsesListStr.map((n: string) => JSON.parse(n));
+    let storedResponses = JSON.parse(storedResponsesStr);
     return storedResponses;
   }
 
@@ -190,21 +185,21 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
         }
       } else if (new Date(localNote.last_updated) < new Date(supabaseNote.last_updated)) {
         // Supabase note is newer
-        addNoteToLocalStorage(user, supabaseNote);
+        upsertNoteToLocalStorage(user, supabaseNote);
       }
     }
 
     // Handle notes that are only in Supabase
     for (const [id, supabaseNote] of supabaseNotesMap) {
       if (!localNotesMap.has(id)) {
-        addNoteToLocalStorage(user, supabaseNote);
+        upsertNoteToLocalStorage(user, supabaseNote);
       }
     }
 
     // Handle responses that are only in Supabase
     for (const [id, supabaseResponse] of supabaseResponsesMap) {
       if (!localResponsesMap.has(id)) {
-        addResponseToLocalStorage(user, supabaseResponse);
+        upsertResponseToLocalStorage(user, supabaseResponse);
       }
     }
   }
@@ -261,7 +256,7 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
     const response = await chatWithNotes(input, notes);
     // Store in local storage
     const created_at = new Date().toISOString();
-    addResponseToLocalStorage(user, {id, content: response || "", created_at, knowledge_base: []})
+    upsertResponseToLocalStorage(user, {id, content: response || "", created_at, knowledge_base: []})
     // Store in database
     if(!response) return;
     handleAddResponse(id, response, data);
@@ -437,7 +432,7 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
 
   const Syncing = () => {
     return (
-      <div>
+      <div className='whitespace-nowrap'>
         Syncing Data...
       </div>
     );
@@ -615,28 +610,28 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
               Ask AI anything...
             </div>
           )}
-          <div className='flex p-3 items-center gap-2'>
+          <div className='flex p-3 items-center'>
             { isSyncing ? <Syncing /> : null}
             <div className='w-full'/>
-            <div>
+            <div className='flex flex-none gap-2'>
               <TbSettings
                 className='cursor-pointer'
                 onClick={handleOpenSetting}
                 size={28}/>
-            </div>
-            {user ? 
-              <img
-                className="rounded-full cursor-pointer"
-                src={user.user_metadata.avatar_url} width={26} height={26}
-                onClick={handleOpenOnboarding}
+              {user ? 
+                <img
+                  className="rounded-full cursor-pointer"
+                  src={user.user_metadata.avatar_url} width={28} height={28}
+                  onClick={handleOpenOnboarding}
+                  />
+                :
+                <FaRegUserCircle 
+                  className="h-5 w-5 rounded-full cursor-pointer" 
+                  width={28} height={28}
+                  onClick={handleOpenOnboarding}
                 />
-              :
-              <FaRegUserCircle 
-                className="h-5 w-5 rounded-full cursor-pointer" 
-                width={26} height={26}
-                onClick={handleOpenOnboarding}
-              />
-            }
+              }
+            </div>
           </div>
         </div>
       </div>
