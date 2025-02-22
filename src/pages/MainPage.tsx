@@ -118,18 +118,15 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
 
   async function handleUpdateNote(id: string, content: string, embedding: number[]) {
     const updateTime = new Date().toISOString();
-    // Update state
     const newNotes = notes
       .map((n) => (n.id === id ? { ...n, content: content, last_updated: updateTime } : n)) // Update the element
       .filter((n) => n.id !== id); // Remove the updated element from its current position
-
     const updatedNote = notes.find((n) => n.id === id); // Find the updated element
     if (updatedNote) {
       updatedNote.content = content;
       updatedNote.last_updated = updateTime;
       newNotes.push(updatedNote); // Move the updated element to the end
     }
-
     setNotes(newNotes);
     // Store in local storage to prevent data lost
     const storedData = localStorage.getItem(user?.id || "guest");
@@ -374,7 +371,7 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
         <h1 className='text-base font-semibold'>Delete Note</h1>
         <p className='py-2'>Are you sure you want to delete this note?</p>
         <div className='border border-[#515151] rounded-md my-3 mb-6'>
-          <UserNote content={note.content} filePaths={note.file_paths} />
+          <UserNote content={note.content} filePaths={note.file_paths}/>
         </div>
         <div className='grow'/>
         <div className='flex justify-end font-semibold'>
@@ -467,8 +464,9 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
             confirmDelete={() => setDeletingNote(editing)}
             onChange={async (e) => {
               const value = e.target.value;
+              await handleUpdateNote(editing.id, value, []);
               const embedding = await generateEmbedding(value);
-              handleUpdateNote(editing.id, value, embedding);
+              await handleUpdateNote(editing.id, value, embedding);
             }} 
             close={() => {setEditing(null)}}
           />}
@@ -482,6 +480,11 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
               notes={notes} 
               responses={responses}
               onNoteClick={(note) => {setEditing(note)}} 
+              onNoteChange={async (id: string, content: string) => {
+                await handleUpdateNote(id, content, []);
+                const embedding = await generateEmbedding(content);
+                await handleUpdateNote(id, content, embedding);
+              }}
               openKnowledgeBase={(content, knowledgeBase) => {
                 const knowledgeBaseStr: string[] = []
                 for (let i=0; i<knowledgeBase.length; i++) {

@@ -6,6 +6,7 @@ import { CircularProgress } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { FileObject } from "@supabase/storage-js";
+import remarkGfm from "remark-gfm";
 
 export const Suggestion = ({text, onClick}: {text: string, onClick: () => void}) => {
     return (
@@ -39,7 +40,62 @@ const URLCard = (preview) => {
 }
 */
 
-export const UserNote = ({content, filePaths, onClick}: {content: string, filePaths: string[], onClick?: () => void}) => {
+const CheckboxMarkdown = ({ content, onContentChange }: { content: string, onContentChange: (content: string) => void}) => {
+  // Parse the markdown content and track checkbox states
+  const [checkboxes, setCheckboxes] = useState(() => {
+    const matches = content.match(/- \[(x| )\]/g) || [];
+    return matches.map(match => match.includes("x")); // Convert to boolean
+  });
+
+  // Handle checkbox toggle
+  const handleCheckboxToggle = (index: number) => {
+    const updatedCheckboxes = checkboxes.map((checked, i) =>
+      i === index ? !checked : checked
+    );
+    setCheckboxes(updatedCheckboxes);
+
+    // Update the markdown content
+    const updatedContent = content
+      .split("\n")
+      .map((line, i) => {
+        if (i === index) {
+          return updatedCheckboxes[i] ? line.replace("- [ ]", "- [x]") : line.replace("- [x]", "- [ ]");
+        }
+        return line;
+      })
+      .join("\n");
+
+    // Call parent function with updated content
+    if (onContentChange) {
+      onContentChange(updatedContent);
+    }
+  };
+
+  // Render markdown content with interactive checkboxes
+  const renderContent = content.split("\n").map((line, index) => {
+    const match = line.match(/^- \[(x| )\] (.*)/);
+    if (match) {
+      const isChecked = checkboxes[index];
+      return (
+        <div key={index} className="p-1 flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={isChecked}
+            onClick={(e) => e.stopPropagation()}
+            onChange={() => handleCheckboxToggle(index)}
+            className="cursor-pointer"
+          />
+          <span>{match[2]}</span>
+        </div>
+      );
+    }
+    return <Markdown key={index} remarkPlugins={[remarkGfm]}>{line}</Markdown>;
+  });
+
+  return <div className="w-full">{renderContent}</div>;
+};
+
+export const UserNote = ({content, filePaths, onClick, onChange}: {content: string, filePaths: string[], onClick?: () => void, onChange?: (content: string) => void}) => {
   const [fileData, setFileData] = useState<{path: string, metadata: FileObject | undefined, url: string | undefined}[]>([]);
 
   const fetchFileData = async () => {
@@ -87,10 +143,17 @@ export const UserNote = ({content, filePaths, onClick}: {content: string, filePa
 
     return () => clearInterval(interval);
   }, [])
-  
+
+  const processedContent = content
+    .replace(/\n/g, "  \n")
+
   return (
       <div className="p-4 pt-2 pb-2 w-full user-Note cursor-pointer hover:bg-[#202020]" onClick={onClick}>
-        <Markdown className="markdown">{content.replace(/\n/g, "  \n")}</Markdown>
+        <CheckboxMarkdown content={processedContent} onContentChange={(content: string) => {
+          if(onChange) {
+            onChange(content);
+          }
+        }}/>
         { fileData.length > 0 ? 
           <div className='flex rounded-lg overflow-scroll gap-3 p-3'>
             {fileData.map((d, index) => (

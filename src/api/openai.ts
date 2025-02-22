@@ -33,6 +33,7 @@ export async function chatWithNotes(input: string, notes: Note[]) {
     // Prepare the messages for the chat
     const messages: ChatCompletionMessageParam[] = [
       { role: 'system', content: "Provide concise answer based on user's notes"},
+      { role: 'system', content: "- If user ask duration, calculate the time by subtracting the finish time by the start time" },
       { role: 'system', content: `User Notes:\n\n${context}` },
       { role: 'user', content: input },
     ];
