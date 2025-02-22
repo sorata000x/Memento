@@ -42,6 +42,6 @@ Build Project
 
 Contribution
 
-Welcome to create a Github Issue or open a Pull Request if you are interested in contributing the project.
-You can also message me on discord `sora1251` if you want discuss with me.
+Welcome to create a Github Issue or open a Pull Request if you are interested in contributing the project.<br/>
+You can also message me on discord `sora1251` if you want discuss with me.<br/>
 For more detailed information on how to contribute, please refer to CONTRIBUTION.md
