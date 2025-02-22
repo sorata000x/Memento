@@ -8,12 +8,9 @@ function getSizeInBytes(str: string) {
 }
 
 export function upsertNoteToLocalStorage(user: User | null, note: Note) {
-  const storageKey = `${user?.id}-notes` || "guest-notes";
+  const storageKey = user ? `${user?.id}-notes` : "guest-notes";
   const storedNotesStr = localStorage.getItem(storageKey) || "[]";
-  console.log(`storedNotesStr: ${storedNotesStr}`);
   let storedNotes: Note[] = JSON.parse(storedNotesStr);
-
-  console.log(`storedNotes: ${storedNotes}`);
 
   // Find the index of the note by a unique identifier (e.g., note.id)
   const existingIndex = storedNotes.findIndex((n) => n.id === note.id);
@@ -36,11 +33,9 @@ export function upsertNoteToLocalStorage(user: User | null, note: Note) {
 }
 
 export function upsertResponseToLocalStorage(user: User | null, response: Response) {
-  const storageKey = `${user?.id}-responses` || "guest-responses";
+  const storageKey = user ? `${user?.id}-responses` : "guest-responses";
   const storedResponsesStr = localStorage.getItem(storageKey) || "[]";
   let storedResponses: Response[] = JSON.parse(storedResponsesStr);
-
-  console.log(`storedResponses: ${storedResponses}`)
 
   // Find the index of the response by a unique identifier (e.g., response.id)
   const existingIndex = storedResponses.findIndex((r) => r.id === response.id);

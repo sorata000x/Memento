@@ -71,10 +71,12 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
     const storedResponses: Response[] = getResponsesFromLocalStorage();
     setNotes(storedNotes);
     setResponses(storedResponses);
-    setSyncing(true);
-    await handleFetchNote();
-    await handleFetchResponses();
-    setSyncing(false);
+    if(user) {
+      setSyncing(true);
+      await handleFetchNote();
+      await handleFetchResponses();
+      setSyncing(false);
+    }
   }
 
   /* Note Functions */
@@ -142,14 +144,14 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
   /* Note Syncing */
 
   const getNotesFromLocalStorage = (): Note[] => {
-    let storedNotesStr = localStorage.getItem(`${user?.id}-notes` || "guest-notes");
+    let storedNotesStr = localStorage.getItem(user ? `${user?.id}-notes` : "guest-notes");
     if(!storedNotesStr) return [];
     let storedNotes = JSON.parse(storedNotesStr);
     return storedNotes;
   }
 
   const getResponsesFromLocalStorage = (): Response[] => {
-    let storedResponsesStr = localStorage.getItem(`${user?.id}-responses` || "guest-responses");
+    let storedResponsesStr = localStorage.getItem(user ? `${user?.id}-responses` : "guest-responses");
     if(!storedResponsesStr) return [];
     let storedResponses = JSON.parse(storedResponsesStr);
     return storedResponses;
@@ -613,7 +615,7 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
           <div className='flex p-3 items-center'>
             { isSyncing ? <Syncing /> : null}
             <div className='w-full'/>
-            <div className='flex flex-none gap-2'>
+            <div className='flex flex-none items-center gap-2'>
               <TbSettings
                 className='cursor-pointer'
                 onClick={handleOpenSetting}
@@ -621,7 +623,7 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
               {user ? 
                 <img
                   className="rounded-full cursor-pointer"
-                  src={user.user_metadata.avatar_url} width={28} height={28}
+                  src={user.user_metadata.avatar_url} width={26} height={26}
                   onClick={handleOpenOnboarding}
                   />
                 :
