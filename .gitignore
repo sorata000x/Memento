@@ -24,4 +24,5 @@ dist-ssr
 *.sw?
 
 # build file 
-dist.zip
+dist.zip.env
+.env

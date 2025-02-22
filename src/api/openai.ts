@@ -2,7 +2,7 @@ import OpenAI from 'openai';
 import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
 
 const openai = new OpenAI({
-  apiKey: "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", // This is the default and can be omitted
+  apiKey: import.meta.env.VITE_OPENAI_API_KEY, // This is the default and can be omitted
   dangerouslyAllowBrowser: true
 });
 
