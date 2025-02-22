@@ -6,7 +6,7 @@ import generateEmbedding, { chatWithNotes } from '../api/openai';
 import { FaRegUserCircle } from "react-icons/fa";
 import { User } from '@supabase/supabase-js';
 import '../App.css';
-import { Note, Response } from '../types';
+import { Message, Note, Response } from '../types';
 import NoteEdit from '../components/NoteEdit/NoteEdit';
 import NoteChat from '../components/NoteChat/NoteChat';
 import { Suggestion, UserNote } from '../components/NoteChat/components';
@@ -17,6 +17,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import CircularProgress from "@mui/material/CircularProgress";
 import { IoIosClose } from "react-icons/io";
+import { addNoteToLocalStorage } from '../utility/localstoarge';
 
 export function MainPage ({user, setUser}: {user: User | null, setUser: (user: User | null) => void}) {
   const [editing, setEditing] = useState<Note | null>(null);
@@ -68,21 +69,22 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
   const update = async () => {
     if (user) setLoading(true);
     init();
+    const storedData = localStorage.getItem(user?.id || "guest");
+    if (storedData !== null && storedData !== "") {
+      const notes: Note[] = getNotesFromLocalStorage().map(n => ({...n, embedding: [], last_updated: n.time}));
+      setNotes(notes);
+    } 
+    setLoading(false);
     await handleFetchNote();
     await handleFetchResponses();
-    setLoading(false);
+    
   }
 
   /* Note Functions */
 
   async function handleFetchNote() {
-    let fetchedNotes: Note[];
-    if(user) {
-      await syncNotes();
-      fetchedNotes = await fetchNotes();
-    } else {
-      fetchedNotes = getNotesFromLocalStorage();
-    }
+    await syncNotes();
+    const fetchedNotes = await fetchNotes();
     setNotes(fetchedNotes);
   }
 
@@ -104,7 +106,7 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
     // Store in local storage to prevent data lost
     const storedData = localStorage.getItem(user?.id || "guest");
     const localNotes = storedData ? JSON.parse(storedData) : [];
-    localNotes.push({id, role: "user", content, embedding, last_updated});
+    localNotes.push({id, role: "user", content, last_updated});
     localStorage.setItem(user?.id || "guest", JSON.stringify(localNotes));
     // Store in database
     await upsertNote({
@@ -129,9 +131,7 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
     }
     setNotes(newNotes);
     // Store in local storage to prevent data lost
-    const storedData = localStorage.getItem(user?.id || "guest");
-    const storedNotes = storedData ? JSON.parse(storedData) : [];
-    storedNotes.push({id, role: "user", content, embedding, last_updated: updateTime});
+    addNoteToLocalStorage(user, {id, role: "user", content, embedding, last_updated: updateTime, file_paths: []})
     // Store in supabase
     updateNote(id, content, embedding, updateTime);
   }
@@ -147,9 +147,12 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
 
   /* Note Syncing */
 
-  const getNotesFromLocalStorage = (): Note[] => {
-    const notes = localStorage.getItem(user?.id || "guest");
-    return notes ? JSON.parse(notes) : [];
+  const getNotesFromLocalStorage = (): Message[] => {
+    let noteStr = localStorage.getItem(user?.id || "guest");
+    let noteStrList: string[] = noteStr ? JSON.parse(noteStr) : [];
+    let notes = noteStrList.map(n => JSON.parse(n));
+    if (!notes) return [];
+    return notes;
   }
 
   // * Notes are being stored both in local storage and supabase.
@@ -160,19 +163,34 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
     // Load notes from local storage and Supabase
     const localNotes = getNotesFromLocalStorage();
     const supabaseNotes = await fetchNotes();
+    const supabaseResponses = await fetchResponses();
+    const supabaseData = [...supabaseNotes, ...supabaseResponses];
     
     // Create a map for easier comparison
     const localMap = new Map(localNotes.map(note => [note.id, note]));
-    const supabaseMap = new Map(supabaseNotes.map(note => [note.id, note]));
+    const supabaseMap = new Map(supabaseData.map(note => [note.id, note]));
 
     // Compare and synchronize
     for (const [id, localNote] of localMap) {
       const supabaseNote = supabaseMap.get(id);
 
-      if (!supabaseNote || new Date(localNote.last_updated) > new Date(supabaseNote.last_updated)) {
+      if (!supabaseNote || new Date(localNote.time) > new Date(supabaseNote.last_updated)) {
         // Local note is newer or does not exist in Supabase
         // Update or insert to supabase
-        upsertNote({id: localNote.id, content: localNote.content, role: localNote.role, embedding: localNote.embedding, last_updated: localNote.last_updated});
+        const embedding = await generateEmbedding(localNote.content);
+        if(localNote.role == 'user') {
+          upsertNote({id: localNote.id, content: localNote.content, role: localNote.role, embedding, last_updated: localNote.time});
+        }
+      } else if (new Date(localNote.time) < new Date(supabaseNote.last_updated)) {
+        // Supabase note is newer
+        addNoteToLocalStorage(user, supabaseNote);
+      }
+    }
+
+    // Handle notes that are only in Supabase
+    for (const [id, supabaseNote] of supabaseMap) {
+      if (!localMap.has(id)) {
+        addNoteToLocalStorage(user, supabaseNote);
       }
     }
   }
@@ -198,6 +216,7 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
         knowledge_base,
       },
     ]);
+    // Store in local
     // Store in database
     await addResponses({
       content,
@@ -226,6 +245,13 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
     ]);
     const data = await handleHybridSearch(input);
     const response = await chatWithNotes(input, notes);
+    // Store in local storage
+    const storedData = localStorage.getItem(user?.id || "guest");
+    const localResponses = storedData ? JSON.parse(storedData) : [];
+    const created_at = new Date().toISOString();
+    localResponses.push({id, role: "assistant", response, created_at});
+    localStorage.setItem(user?.id || "guest", JSON.stringify(localResponses));
+    // Store in database
     if(!response) return;
     handleAddResponse(id, response, data);
   }
@@ -371,7 +397,7 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
         <h1 className='text-base font-semibold'>Delete Note</h1>
         <p className='py-2'>Are you sure you want to delete this note?</p>
         <div className='border border-[#515151] rounded-md my-3 mb-6'>
-          <UserNote content={note.content} filePaths={note.file_paths}/>
+          <UserNote content={note.content} filePaths={note.file_paths || []}/>
         </div>
         <div className='grow'/>
         <div className='flex justify-end font-semibold'>

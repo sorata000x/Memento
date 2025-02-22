@@ -3,15 +3,15 @@ export type Note = {
   content: string;
   role: string;
   last_updated: string;
-  embedding: number[];
-  file_paths: string[];
+  embedding?: number[];
+  file_paths?: string[];
 };
 
 export type Response = {
   id: string;
   content: string;
   created_at: string;
-  embedding: number[];
+  embedding?: number[];
   knowledge_base: {id: string, similarity: number}[];
 };
 
@@ -19,6 +19,6 @@ export type Message = {
   id: string,
   content: string;
   time: string;
-  type: string;
+  role: string;
   file_paths?: string[];
 }
