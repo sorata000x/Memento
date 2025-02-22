@@ -77,7 +77,7 @@ const SettingPage = ({user, setUser}: {user: User | null, setUser: (user: User |
             <h2 className="text-lg font-medium pb-2">Account</h2>
             {user ? <div className="flex flex-col">
                 <div className="flex items-center">
-                    <img className="rounded-full" src={user.user_metadata.avatar_url} width={70} height={70}/>
+                    <img className="rounded-full" src={user.user_metadata.avatar_url} width={68} height={68}/>
                     <div className="flex flex-col p-4 pr-0">
                         <h3 className="text-base font-medium cursor-pointer">{user.user_metadata.full_name}</h3>
                         <p className="text-sm text-[#919191]">{user.email}</p>

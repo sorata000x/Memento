@@ -40,32 +40,36 @@ const URLCard = (preview) => {
 }
 */
 
-const CheckboxMarkdown = ({ content, onContentChange }: { content: string, onContentChange: (content: string) => void}) => {
-  // Parse the markdown content and track checkbox states
-  const [checkboxes, setCheckboxes] = useState(() => {
-    const matches = content.match(/- \[(x| )\]/g) || [];
-    return matches.map(match => match.includes("x")); // Convert to boolean
-  });
+const CheckboxMarkdown = ({ content, onContentChange }: { content: string, onContentChange: (content: string) => void }) => {
+  // Extract checkboxes with their exact line index positions
+  const getCheckboxStates = (content: string) => {
+    return content.split("\n").map((line) => line.match(/^- \[(x| )\] /) ? line.includes("[x]") : null);
+  };
+
+  const [checkboxes, setCheckboxes] = useState<(boolean | null)[]>(() => getCheckboxStates(content));
+
+  useEffect(() => {
+    setCheckboxes(getCheckboxStates(content)); // Update state when content changes externally
+  }, [content]);
 
   // Handle checkbox toggle
-  const handleCheckboxToggle = (index: number) => {
+  const handleCheckboxToggle = (checkboxIndex: number) => {
     const updatedCheckboxes = checkboxes.map((checked, i) =>
-      i === index ? !checked : checked
+      i === checkboxIndex ? !checked : checked
     );
     setCheckboxes(updatedCheckboxes);
 
-    // Update the markdown content
+    // Update markdown content correctly
     const updatedContent = content
       .split("\n")
       .map((line, i) => {
-        if (i === index) {
+        if (checkboxes[i] !== null) { // Ensure it's a checkbox line
           return updatedCheckboxes[i] ? line.replace("- [ ]", "- [x]") : line.replace("- [x]", "- [ ]");
         }
         return line;
       })
       .join("\n");
 
-    // Call parent function with updated content
     if (onContentChange) {
       onContentChange(updatedContent);
     }
@@ -75,12 +79,11 @@ const CheckboxMarkdown = ({ content, onContentChange }: { content: string, onCon
   const renderContent = content.split("\n").map((line, index) => {
     const match = line.match(/^- \[(x| )\] (.*)/);
     if (match) {
-      const isChecked = checkboxes[index];
       return (
         <div key={index} className="p-1 flex items-center gap-2">
           <input
             type="checkbox"
-            checked={isChecked}
+            checked={!!checkboxes[index]} // Ensure boolean
             onClick={(e) => e.stopPropagation()}
             onChange={() => handleCheckboxToggle(index)}
             className="cursor-pointer"
