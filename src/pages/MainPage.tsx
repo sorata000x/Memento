@@ -434,7 +434,7 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
 
   const Syncing = () => {
     return (
-      <div className='whitespace-nowrap'>
+      <div className='whitespace-nowrap text-[#888888]'>
         Syncing Data...
       </div>
     );
