@@ -17,21 +17,21 @@ const NoteChat = ({
   openKnowledgeBase: (content: string, knowledgeBase: {id: string, similarity: number}[]) => void,
 }) => {
   const [messages, setMessages] = useState<Message[]>([]);
-
   useEffect(() => {
-    const merged = [
-      ...notes.map(n => ({
+    const merged: Message[] = [
+      ...notes.map(n => { 
+        return {
         id: n.id,
         content: n.content,
         time: n.last_updated,
-        role: "note",
+        type: "note",
         file_paths: n.file_paths
-      })),
+      }}),
       ...responses.map(r => ({
         id: r.id,
         content: r.content,
         time: r.created_at,
-        role: "response",
+        type: "response",
       }))
     ];
     const sorted = merged.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
@@ -42,10 +42,11 @@ const NoteChat = ({
   return <>
     {
       messages.map((m) => {
-        if(!m.id || !m.content || !m.time || !m.role) {
-          console.debug(`m.id: ${m.id}, m.content: ${m.content}, m.time: ${m.time}, m.role: ${m.role}`);
+        if(!m.id || !m.content || !m.time || !m.type) {
+          console.debug(`m.id: ${m.id}, m.content: ${m.content}, m.time: ${m.time}, m.type: ${m.type}`);
           return
         }
+        console.debug(`m.id: ${m.id}, m.content: ${m.content}, m.time: ${m.time}, m.type: ${m.type}`);
         const components = [];
         const date = new Date(m.time);
         // Format the date
@@ -58,7 +59,7 @@ const NoteChat = ({
           last_date = formattedDate;
           components.push(<ChatDateDivider key={uuid()} date={last_date} />)
         }
-        if (m.role == 'note') {
+        if (m.type == 'note') {
           components.push(
             <UserNote 
               key={m.id} 
@@ -67,7 +68,7 @@ const NoteChat = ({
               onClick={() => onNoteClick(notes.find(n => n.id == m.id) || null)}
               onChange={(content: string) => onNoteChange(m.id, content)}/>)
         } 
-        if (m.role == 'response') {
+        if (m.type == 'response') {
           components.push(<AssistantNote key={m.id} content={m.content} onClick={() => openKnowledgeBase(m.content, responses.find(r => r.id == m.id)?.knowledge_base || [])} />)
         }
         return components;

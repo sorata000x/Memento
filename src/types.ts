@@ -19,6 +19,6 @@ export type Message = {
   id: string,
   content: string;
   time: string;
-  role: string;
+  type: string;
   file_paths?: string[];
 }
