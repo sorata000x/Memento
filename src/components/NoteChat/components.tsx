@@ -41,54 +41,61 @@ const URLCard = (preview) => {
 */
 
 const CheckboxMarkdown = ({ content, onContentChange }: { content: string, onContentChange: (content: string) => void }) => {
-  // Extract checkboxes with their exact line index positions
-  const getCheckboxStates = (content: string) => {
-    return content.split("\n").map((line) => line.match(/^- \[(x| )\] /) ? line.includes("[x]") : null);
+  const getCheckboxes = (content: string) => {
+    return content.split("\n").map((line, index) => ({
+      index,
+      isChecked: line.includes("- [x]"),
+      isCheckbox: /^(\s*)- \[(x| )\] /.test(line),
+    }));
   };
 
-  const [checkboxes, setCheckboxes] = useState<(boolean | null)[]>(() => getCheckboxStates(content));
+  const [checkboxes, setCheckboxes] = useState(getCheckboxes(content));
 
   useEffect(() => {
-    setCheckboxes(getCheckboxStates(content)); // Update state when content changes externally
+    setCheckboxes(getCheckboxes(content));
   }, [content]);
 
-  // Handle checkbox toggle
-  const handleCheckboxToggle = (checkboxIndex: number) => {
-    const updatedCheckboxes = checkboxes.map((checked, i) =>
-      i === checkboxIndex ? !checked : checked
+  const handleCheckboxToggle = (lineIndex: number) => {
+    const updatedCheckboxes = checkboxes.map((cb) =>
+      cb.index === lineIndex ? { ...cb, isChecked: !cb.isChecked } : cb
     );
+
     setCheckboxes(updatedCheckboxes);
 
-    // Update markdown content correctly
     const updatedContent = content
       .split("\n")
       .map((line, i) => {
-        if (checkboxes[i] !== null) { // Ensure it's a checkbox line
-          return updatedCheckboxes[i] ? line.replace("- [ ]", "- [x]") : line.replace("- [x]", "- [ ]");
+        const checkbox = updatedCheckboxes.find((cb) => cb.index === i);
+        if (checkbox && checkbox.isCheckbox) {
+          return checkbox.isChecked ? line.replace("- [ ]", "- [x]") : line.replace("- [x]", "- [ ]");
         }
         return line;
       })
       .join("\n");
 
-    if (onContentChange) {
-      onContentChange(updatedContent);
-    }
+    onContentChange(updatedContent);
   };
 
-  // Render markdown content with interactive checkboxes
+  // ✅ FIX: Render the checkbox label with Markdown support
   const renderContent = content.split("\n").map((line, index) => {
-    const match = line.match(/^- \[(x| )\] (.*)/);
+    const match = line.match(/^(\s*)- \[(x| )\] (.*)/);
     if (match) {
+      const indent = match[1] || "";
+      const checkbox = checkboxes.find((cb) => cb.index === index);
+      const isChecked = checkbox?.isChecked || false;
+      const markdownText = match[3]; // The actual text after "- [ ]"
+
       return (
-        <div key={index} className="p-1 flex items-center gap-2">
+        <div key={index} className="p-1 flex items-center gap-2" style={{ paddingLeft: indent.length * 4 }}>
           <input
             type="checkbox"
-            checked={!!checkboxes[index]} // Ensure boolean
+            checked={isChecked}
             onClick={(e) => e.stopPropagation()}
             onChange={() => handleCheckboxToggle(index)}
             className="cursor-pointer"
           />
-          <span>{match[2]}</span>
+          {/* ✅ FIX: Render markdown inside a <Markdown> component so links work */}
+          <Markdown remarkPlugins={[remarkGfm]}>{markdownText}</Markdown>
         </div>
       );
     }
