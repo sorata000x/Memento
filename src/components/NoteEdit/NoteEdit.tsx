@@ -17,14 +17,14 @@ const NoteEdit = ({content, confirmDelete, onChange, close}: {content: string, c
     }, []);
     
     return (
-      <div className='flex flex-col h-full'>
+      <div className='absolute flex flex-col h-full w-full bg-[#212121] p-3'>
         {showMorePopUp ? 
           <MorePopUp 
             confirmDelete={confirmDelete} 
             closePopUp={()=>setShowMorePopUp(false)}
             closeEdit={()=>close()}
             /> : null}
-        <div className='flex item-center justify-between mx-3'>
+        <div className='flex item-center justify-between'>
           <IoIosArrowBack className='m-1 mb-0 cursor-pointer' onClick={() => close()} size={22}/>
           <IoIosMore 
             onClick={() => setShowMorePopUp(true)}
@@ -39,7 +39,7 @@ const NoteEdit = ({content, confirmDelete, onChange, close}: {content: string, c
             onChange(e);
           }}
           placeholder='tesrt'
-          className='h-full bg-transparent focus:outline-none p-4 pt-2 pb-2'
+          className='h-full bg-transparent focus:outline-none p-2'
           style={{
             boxSizing: 'border-box',
             resize: 'none',

@@ -70,6 +70,7 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
     const storedNotes: Note[] = getNotesFromLocalStorage();
     const storedResponses: Response[] = getResponsesFromLocalStorage();
     setNotes(storedNotes);
+    if(containerRef.current) containerRef.current.scrollTop = containerRef.current.scrollHeight;
     setResponses(storedResponses);
     if(user) {
       setSyncing(true);
@@ -372,16 +373,6 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
     update();
   }, [user]);
 
-  useEffect(() => {
-    if (containerRef.current) {
-      setTimeout(() => {
-        if (containerRef.current) {
-          containerRef.current.scrollTop = containerRef.current.scrollHeight;
-        }
-      }, 1); // Small delay ensures DOM is updated
-    }
-  }, [editing, notes]);
-
   const DeleteConfirmationPopup = ({note, onDelete, onCancel}: {note: Note, onDelete: () => void, onCancel: () => void}) => {
     const ref = useRef<HTMLDivElement>(null);
 
@@ -487,12 +478,7 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
           }}
           onCancel={()=>setDeletingNote(null)}
           /> : null }
-      <div className='flex justify-start items-start w-full'>
-        <div className="flex flex-col h-[100vh] w-full bg-[#212121]">
-        <div 
-          ref={containerRef}
-          className="pt-3 pb-5 flex-grow overflow-auto flex flex-col scrollbar scrollbar-thumb-blue-500 scrollbar-track-gray-300">
-          {editing && <NoteEdit 
+      {editing && <NoteEdit 
             content={editing.content} 
             confirmDelete={() => setDeletingNote(editing)}
             onChange={async (e) => {
@@ -503,13 +489,17 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
             }} 
             close={() => {setEditing(null)}}
           />}
-          {showKnowledgeBase && <KnowledgeBase 
+      {showKnowledgeBase && <KnowledgeBase 
             content={showKnowledgeBase.content} 
             knowledgeBase={showKnowledgeBase.knowledgeBase}
             close={() => setShowKnowledgeBase(null)}
           />}
-          {!editing && !showKnowledgeBase && 
-            <NoteChat 
+      <div className='flex justify-start items-start w-full'>
+        <div className="flex flex-col h-[100vh] w-full bg-[#212121]">
+        <div 
+          ref={containerRef}
+          className="pt-3 pb-5 flex-grow overflow-auto flex flex-col scrollbar scrollbar-thumb-blue-500 scrollbar-track-gray-300">
+          <NoteChat 
               notes={notes} 
               responses={responses}
               onNoteClick={(note) => {setEditing(note)}} 
@@ -527,7 +517,7 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
                   }
                 }
                 setShowKnowledgeBase({content, knowledgeBase: knowledgeBaseStr})
-              }}/>}
+              }}/>
         </div>
         {
           noteSuggestions.length > 0 || commandSuggestions.length > 0 ? 

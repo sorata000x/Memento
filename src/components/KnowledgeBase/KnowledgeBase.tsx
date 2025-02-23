@@ -21,8 +21,8 @@ const KnowledgeBase = ({
         )
     }
 
-    return <div className='flex flex-col h-full'>
-        <div className='flex item-start justify-between px-3'>
+    return <div className='absolute flex flex-col h-full w-full bg-[#212121]'>
+        <div className='flex item-start justify-between p-3'>
             <IoIosArrowBack className='m-1 cursor-pointer' onClick={() => close()} size={22}/>
         </div>
         <div className='overflow-y-auto h-[100vh]'>
