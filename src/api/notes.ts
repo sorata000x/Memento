@@ -159,7 +159,7 @@ export async function upsertNote({
         // Try updating the note
         const { data: updatedNote, error: updateError } = await supabase
           .from('notes')
-          .update({ content, role, embedding, last_updated })
+          .update({ content, role, embedding })
           .eq('id', id)
           .eq('user_id', userId)
           .select(); // Ensures the data returned is queryable

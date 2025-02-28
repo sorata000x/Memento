@@ -90,7 +90,9 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
 
   async function handleAddNote(role: string, content: string, file_paths: string[]) {
     const id = uuid();
-    const last_updated = new Date().toISOString();
+    const offset = new Date().getTimezoneOffset();
+    const localTime = new Date(new Date().getTime() - offset * 60000).toISOString();
+    const last_updated = localTime;
     const embedding = await generateEmbedding(content);
     setNotes((prev) => [
       ...prev,
@@ -103,6 +105,7 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
         file_paths,
       },
     ]);
+    if(containerRef.current) containerRef.current.scrollTop = containerRef.current.scrollHeight;
     // Store in local storage to prevent data lost
     upsertNoteToLocalStorage(user, {id, content, embedding, role, last_updated, file_paths});
     // Store in database
@@ -116,14 +119,15 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
   }
 
   async function handleUpdateNote(id: string, content: string, embedding: number[]) {
-    const updateTime = new Date().toISOString();
+    const offset = new Date().getTimezoneOffset();
+    const localTime = new Date(new Date().getTime() - offset * 60000).toISOString();
+    const updateTime = localTime;
     const newNotes = notes
       .map((n) => (n.id === id ? { ...n, content: content, last_updated: updateTime } : n)) // Update the element
       .filter((n) => n.id !== id); // Remove the updated element from its current position
     const updatedNote = notes.find((n) => n.id === id); // Find the updated element
     if (updatedNote) {
       updatedNote.content = content;
-      updatedNote.last_updated = updateTime;
       newNotes.push(updatedNote); // Move the updated element to the end
     }
     setNotes(newNotes);
@@ -216,7 +220,9 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
   }
 
   async function handleAddResponse(id: string, content: string, knowledge_base: {id: string, similarity: number}[]) {
-    const created_at = new Date().toISOString();
+    const offset = new Date().getTimezoneOffset();
+    const localTime = new Date(new Date().getTime() - offset * 60000).toISOString();
+    const created_at = localTime;
     const embedding = await generateEmbedding(content);
     setResponses((prev) => [
       ...prev.slice(0, -1),
@@ -245,20 +251,22 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
 
   async function handleChat(input: string) {
     const id = uuid();
+    const offset = new Date().getTimezoneOffset();
+    const localTime = new Date(new Date().getTime() - offset * 60000).toISOString();
     setResponses((prev) => [
       ...prev,
       {
         id,
         content: "",
         embedding: [],
-        created_at: new Date().toISOString(),
+        created_at: localTime,
         knowledge_base: [],
       },
     ]);
     const data = await handleHybridSearch(input);
     const response = await chatWithNotes(input, notes);
     // Store in local storage
-    const created_at = new Date().toISOString();
+    const created_at = localTime;
     upsertResponseToLocalStorage(user, {id, content: response || "", created_at, knowledge_base: []})
     // Store in database
     if(!response) return;

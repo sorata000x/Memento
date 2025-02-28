@@ -27,11 +27,11 @@ body {
 }
 
 .markdown ul {
-  margin-left: 30px;
+  margin-left: 20px;
   list-style-type: disc;
 }
 
 .markdown ol {
   list-style-type: decimal;
-  margin-left: 30px;
+  margin-left: 20px;
 }

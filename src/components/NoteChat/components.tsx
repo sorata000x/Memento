@@ -1,4 +1,3 @@
-import ReactMarkdown from 'react-markdown';
 import icon from "../../assets/memento-icon.png";
 import { MdOutlineStickyNote2 } from "react-icons/md";
 import Markdown from 'react-markdown';
@@ -40,7 +39,7 @@ const URLCard = (preview) => {
 }
 */
 
-const CheckboxMarkdown = ({ content, onContentChange }: { content: string, onContentChange: (content: string) => void }) => {
+const CheckboxMarkdown = ({ content, onContentChange }: { content: string, onContentChange?: (content: string) => void }) => {
   const getCheckboxes = (content: string) => {
     return content.split("\n").map((line, index) => ({
       index,
@@ -73,7 +72,7 @@ const CheckboxMarkdown = ({ content, onContentChange }: { content: string, onCon
       })
       .join("\n");
 
-    onContentChange(updatedContent);
+    if(onContentChange) onContentChange(updatedContent);
   };
 
   // ✅ FIX: Render the checkbox label with Markdown support
@@ -95,11 +94,11 @@ const CheckboxMarkdown = ({ content, onContentChange }: { content: string, onCon
             className="cursor-pointer"
           />
           {/* ✅ FIX: Render markdown inside a <Markdown> component so links work */}
-          <Markdown remarkPlugins={[remarkGfm]}>{markdownText}</Markdown>
+          <Markdown className="markdown" remarkPlugins={[remarkGfm]}>{markdownText}</Markdown>
         </div>
       );
     }
-    return <Markdown key={index} remarkPlugins={[remarkGfm]}>{line}</Markdown>;
+    return <Markdown key={index} className="markdown" remarkPlugins={[remarkGfm]}>{line}</Markdown>;
   });
 
   return <div className="w-full">{renderContent}</div>;
@@ -191,6 +190,9 @@ export const UserNote = ({content, filePaths, onClick, onChange}: {content: stri
 }
 
 export const AssistantNote = ({content, onClick}: {content: string, onClick?: () => void}) => {
+  const processedContent = content
+    .replace(/\n/g, "  \n")
+
   return (
     <div className="flex py-2 px-4 w-ful" style={{backgroundColor: "#191919"}}>
       <img height={14} width={14} className='mr-2 mt-[0.2rem] flex-shrink-0' style={{ width: '14px', height: '14px' }} src={icon} alt="icon"/>
@@ -199,7 +201,7 @@ export const AssistantNote = ({content, onClick}: {content: string, onClick?: ()
         <CircularProgress size={18} style={{ color: "white" }}/>
         :
         <div className="flex flex-col">
-          <ReactMarkdown className="markdown">{content.replace(/\n/g, "  \n")}</ReactMarkdown>
+          <CheckboxMarkdown content={processedContent}/>
           {
             onClick ? 
             <div 
