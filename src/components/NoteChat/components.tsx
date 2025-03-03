@@ -75,7 +75,6 @@ const CheckboxMarkdown = ({ content, onContentChange }: { content: string, onCon
     if(onContentChange) onContentChange(updatedContent);
   };
 
-  // ✅ FIX: Render the checkbox label with Markdown support
   const renderContent = content.split("\n").map((line, index) => {
     const match = line.match(/^(\s*)- \[(x| )\] (.*)/);
     if (match) {
@@ -85,7 +84,7 @@ const CheckboxMarkdown = ({ content, onContentChange }: { content: string, onCon
       const markdownText = match[3]; // The actual text after "- [ ]"
 
       return (
-        <div key={index} className="p-1 flex items-center gap-2" style={{ paddingLeft: indent.length * 4 }}>
+        <div key={index} className="p-1 flex items-center gap-2" style={{ paddingLeft: indent.length * 8 + 2 }}>
           <input
             type="checkbox"
             checked={isChecked}

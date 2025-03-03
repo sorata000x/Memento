@@ -399,7 +399,7 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
       };
     }, [onCancel]);
     
-    return <div ref={ref} className='flex items-center justify-center h-[100vh] w-[100vw] bg-black bg-opacity-50 absolute'>
+    return <div ref={ref} className='flex items-center justify-center h-[100vh] w-[100vw] bg-black bg-opacity-50 absolute bg-[#212121]'>
       <div className='flex flex-col w-[16rem] bg-[#212121] p-3 rounded-md'>
         <h1 className='text-base font-semibold'>Delete Note</h1>
         <p className='py-2'>Are you sure you want to delete this note?</p>
@@ -472,20 +472,11 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
   const [files, setFiles] = useState<{name: string, path: string, url: string}[]>([]);
 
   return (
-    <div onDrop={handleDrop}
-    onDragOver={(event) => {
-      event.preventDefault();
-    }}>
-      { deletingNote !== null ? 
-        <DeleteConfirmationPopup 
-          note={deletingNote!} 
-          onDelete={()=>{
-            handleDeleteNote(deletingNote!.id);
-            setDeletingNote(null);
-            setEditing(null);
-          }}
-          onCancel={()=>setDeletingNote(null)}
-          /> : null }
+    <div 
+      onDrop={handleDrop}
+      onDragOver={(event) => {
+        event.preventDefault();
+      }}>
       {editing && <NoteEdit 
             content={editing.content} 
             confirmDelete={() => setDeletingNote(editing)}
@@ -497,6 +488,16 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
             }} 
             close={() => {setEditing(null)}}
           />}
+      { deletingNote !== null ? 
+        <DeleteConfirmationPopup 
+          note={deletingNote!} 
+          onDelete={()=>{
+            handleDeleteNote(deletingNote!.id);
+            setDeletingNote(null);
+            setEditing(null);
+          }}
+          onCancel={()=>setDeletingNote(null)}
+          /> : null }
       {showKnowledgeBase && <KnowledgeBase 
             content={showKnowledgeBase.content} 
             knowledgeBase={showKnowledgeBase.knowledgeBase}

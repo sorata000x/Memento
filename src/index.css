@@ -68,13 +68,13 @@ button:focus-visible {
 }
 
 .markdown ul {
-  margin-left: 20px;
+  margin-left: 16px;
   list-style-type: disc;
 }
 
 .markdown ol {
   list-style-type: decimal;
-  margin-left: 20px;
+  margin-left: 16px;
 }
 
 button {

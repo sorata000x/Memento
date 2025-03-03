@@ -63,7 +63,7 @@ const NoteChat = ({
           components.push(
             <UserNote 
               key={m.id} 
-              content={m.content + m.time} 
+              content={m.content} 
               filePaths={m.file_paths || []} 
               onClick={() => onNoteClick(notes.find(n => n.id == m.id) || null)}
               onChange={(content: string) => onNoteChange(m.id, content)}/>)

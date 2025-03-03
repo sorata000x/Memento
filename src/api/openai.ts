@@ -30,10 +30,24 @@ export async function chatWithNotes(input: string, notes: Note[]) {
     // Combine notes into a contextual string
     let context = notes.map(note => `${note.content} (updated: ${note.last_updated})`).join(',');
 
+    const offset = new Date().getTimezoneOffset();
+    const localTime = new Date(new Date().getTime() - offset * 60000).toISOString();
+
     // Prepare the messages for the chat
+    // TODO: maybe use RAG for instructions as well?
     const messages: ChatCompletionMessageParam[] = [
       { role: 'system', content: "Provide concise answer based on user's notes"},
       { role: 'system', content: "- If user ask duration, calculate the time by subtracting the finish time by the start time" },
+      { role: 'system', content: `
+        - If user ask for a plan, layout exactly when to do what 
+        (e.g. 
+        \`15:00-16:00\` 
+        Read book
+        \`16:00-17:00\` 
+        Gym Workout
+        )
+        ` },
+      { role: 'system', content: `The current time is: ${localTime}` },
       { role: 'system', content: `User Notes:\n\n${context}` },
       { role: 'user', content: input },
     ];

@@ -25,13 +25,9 @@ export const MorePopUp = ({
       };
     }, [closePopUp]);
   
-    return <div ref={ref} className='flex flex-col absolute right-12 w-[10rem] bg-black p-1 rounded-md'>
+    return <div ref={ref} className='flex flex-col absolute top-0 right-12 w-[10rem] bg-black p-1 rounded-md'>
       <div
-        onClick={
-          () => {
-            confirmDelete();
-          }
-        } 
+        onClick={() => confirmDelete()} 
         className='flex items-center justify-between hover:bg-[#212121] cursor-pointer rounded-sm py-1 px-2 text-red-500'>
         <p>Delete Note</p>
         <MdDeleteForever size={24}/>
