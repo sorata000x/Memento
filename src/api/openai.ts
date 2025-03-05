@@ -1,21 +1,32 @@
-import OpenAI from 'openai';
 import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
 
-const openai = new OpenAI({
-  apiKey: import.meta.env.VITE_OPENAI_API_KEY, // This is the default and can be omitted
-  dangerouslyAllowBrowser: true
-});
-
-async function generateEmbedding(content: string) {
+export async function getEmbedding(content: string) {
   try {
-    const embeddingResponse = await openai.embeddings.create({
-      model: 'text-embedding-ada-002',
-      input: content,
+    const response = await fetch('https://memento-backend-two.vercel.app/api/embedding', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ content }), // Send content as JSON body
     });
-    return embeddingResponse.data[0].embedding;
+
+    // Check if the response is successful (status 200)
+    if (!response.ok) {
+      throw new Error('Failed to fetch embedding');
+    }
+
+    // Parse the response as JSON
+    const data = await response.json();
+
+    // Extract the embedding
+    const embedding = data.embedding;
+
+    // Return the embedding or use it for further processing
+    return embedding;
   } catch (error) {
-    console.error('Error generating embedding:', error);
-    throw error;
+    console.error('Error:', error);
+    // Handle the error appropriately (e.g., show an error message to the user)
+    return null;
   }
 }
 
@@ -54,18 +65,24 @@ export async function chatWithNotes(input: string, notes: Note[]) {
 
     console.log(`messages: ${JSON.stringify(messages)}`)
 
-    // Create chat completion
-    const chatCompletion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages,
+    const chatCompletionResponse = await fetch('https://memento-backend-two.vercel.app/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages }),
     });
-
+    
+    // Check if the response is OK (status 200)
+    if (!chatCompletionResponse.ok) {
+      throw new Error('Failed to get a valid response from the server');
+    }
+    
+    // Parse the response body as JSON
+    const response = await chatCompletionResponse.json();
+    
     // Return the assistant's response
-    return chatCompletion.choices[0].message.content;
+    return response.content;
   } catch (error) {
     console.error('Error in chatWithNotes:', error);
     throw error;
   }
 }
-
-export default generateEmbedding;

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { deleteNote, fetchNotes, updateNote, upsertNote } from '../api/notes';
 import {v4 as uuid} from 'uuid';
 import { hybridSearch, searchNotesByPrefix } from '../api/search';
-import generateEmbedding, { chatWithNotes } from '../api/openai';
+import { getEmbedding, chatWithNotes } from '../api/openai';
 import { FaRegUserCircle } from "react-icons/fa";
 import { User } from '@supabase/supabase-js';
 import '../App.css';
@@ -70,14 +70,15 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
     const storedNotes: Note[] = getNotesFromLocalStorage();
     const storedResponses: Response[] = getResponsesFromLocalStorage();
     setNotes(storedNotes);
-    if(containerRef.current) containerRef.current.scrollTop = containerRef.current.scrollHeight;
     setResponses(storedResponses);
+    if(containerRef.current) containerRef.current.scrollTop = containerRef.current.scrollHeight;
     if(user) {
       setSyncing(true);
       await handleFetchNote();
       await handleFetchResponses();
       setSyncing(false);
     }
+    if(containerRef.current) containerRef.current.scrollTop = containerRef.current.scrollHeight;
   }
 
   /* Note Functions */
@@ -93,7 +94,7 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
     const offset = new Date().getTimezoneOffset();
     const localTime = new Date(new Date().getTime() - offset * 60000).toISOString();
     const last_updated = localTime;
-    const embedding = await generateEmbedding(content);
+    const embedding = await getEmbedding(content);
     setNotes((prev) => [
       ...prev,
       {
@@ -186,7 +187,7 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
       if (!supabaseNote || new Date(localNote.last_updated) > new Date(supabaseNote.last_updated)) {
         // Local note is newer or does not exist in Supabase
         // Update or insert to supabase
-        const embedding = await generateEmbedding(localNote.content);
+        const embedding = await getEmbedding(localNote.content);
         if(localNote.role == 'user') {
           upsertNote({...localNote, embedding});
         }
@@ -223,7 +224,7 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
     const offset = new Date().getTimezoneOffset();
     const localTime = new Date(new Date().getTime() - offset * 60000).toISOString();
     const created_at = localTime;
-    const embedding = await generateEmbedding(content);
+    const embedding = await getEmbedding(content);
     setResponses((prev) => [
       ...prev.slice(0, -1),
       {
@@ -244,7 +245,7 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
   }
 
   async function handleHybridSearch(query: string) {
-    const embedding = await generateEmbedding(query);
+    const embedding = await getEmbedding(query);
     const data = await hybridSearch(query, embedding);
     return data;
   }  
@@ -483,7 +484,7 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
             onChange={async (e) => {
               const value = e.target.value;
               await handleUpdateNote(editing.id, value, []);
-              const embedding = await generateEmbedding(value);
+              const embedding = await getEmbedding(value);
               await handleUpdateNote(editing.id, value, embedding);
             }} 
             close={() => {setEditing(null)}}
@@ -514,7 +515,7 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
               onNoteClick={(note) => {setEditing(note)}} 
               onNoteChange={async (id: string, content: string) => {
                 await handleUpdateNote(id, content, []);
-                const embedding = await generateEmbedding(content);
+                const embedding = await getEmbedding(content);
                 await handleUpdateNote(id, content, embedding);
               }}
               openKnowledgeBase={(content, knowledgeBase) => {
