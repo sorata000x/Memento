@@ -1,65 +1,46 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { deleteNote, fetchNotes, updateNote, upsertNote } from '../api/notes';
 import {v4 as uuid} from 'uuid';
 import { hybridSearch, searchNotesByPrefix } from '../api/search';
-import { getEmbedding, chatWithNotes } from '../api/openai';
 import { FaRegUserCircle } from "react-icons/fa";
-import { User } from '@supabase/supabase-js';
 import '../App.css';
-import { Note, Response } from '../types';
+import { Note } from '../types';
 import NoteEdit from '../components/NoteEdit/NoteEdit';
 import NoteChat from '../components/NoteChat/NoteChat';
-import { Suggestion, UserNote } from '../components/NoteChat/components';
+import { Suggestion } from '../components/NoteChat/components';
 import { TbSettings } from "react-icons/tb";
-import { addResponses, fetchResponses } from '../api/responses';
 import KnowledgeBase from '../components/KnowledgeBase/KnowledgeBase';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { IoIosClose } from "react-icons/io";
-import { upsertNoteToLocalStorage, upsertResponseToLocalStorage } from '../utility/localstoarge';
+import { useProvider } from '../StateProvider';
+import DeleteConfirmationPopup from '../components/DeleteConfirmationPopup';
+import { fetchNotes, fetchNotesBatch, upsertNote } from '../api/notes';
+import { getNotesFromLocalStorage, upsertNoteToLocalStorage } from '../utility/localstoarge';
+import { chatWithNotes, getEmbedding } from '../api/openai';
 
-export function MainPage ({user, setUser}: {user: User | null, setUser: (user: User | null) => void}) {
+export function MainPage () {
   const [editing, setEditing] = useState<Note | null>(null);
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [responses, setResponses] = useState<Response[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   const [noteSuggestions, setNoteSuggestions] = useState<Note[]>([]);
   const [commandSuggestions, setCommandSuggestions] = useState<string[]>([]);
   const [input, setInput] = useState('');
   const [isSyncing, setSyncing] = useState(false);
   const [isComposing, setIsComposing] = useState(false);
+  const [{ notes, user }, dispatch] = useProvider();
 
-  useEffect(() => {
-    const fetchUser = async () => {
-      const { data: { user: suser } } = await supabase.auth.getUser();
-      if (suser && user != suser) {
-        setUser(suser);
-      } 
-    };
-    fetchUser();
-    // Listen to user change
-    const { data } = supabase.auth.onAuthStateChange((event, session) => {
-        if (event === 'SIGNED_IN') {
-            if (!session?.user || session?.user?.id === user?.id) return; 
-            const suser = session?.user;
-            if(!suser) return;
-            console.log('User signed in:', session?.user);
-            setUser(suser);
-        } else if (event == 'SIGNED_OUT') {
-            console.log('User signed out');
-            setUser(null);
-        } 
-    });
-    return () => data.subscription.unsubscribe();  
-  }, []);
-
+  /**
+   * Reset states
+   */
   const init = async () => {
+    setSyncing(false)
     setEditing(null);
-    setNotes([]);
     setNoteSuggestions([]);
     setCommandSuggestions([]);
     setInput('');
-    setResponses([]);
+    dispatch({
+      type: "SET_NOTES",
+      newNotes: []
+    });
   }
 
   /**
@@ -67,211 +48,69 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
    */
   const update = async () => {
     init();
-    const storedNotes: Note[] = getNotesFromLocalStorage();
-    const storedResponses: Response[] = getResponsesFromLocalStorage();
-    setNotes(storedNotes);
-    setResponses(storedResponses);
+    dispatch({
+      type: "FETCH_INITIAL_NOTES",
+    })
     if(containerRef.current) containerRef.current.scrollTop = containerRef.current.scrollHeight;
-    if(user) {
-      setSyncing(true);
-      await handleFetchNote();
-      await handleFetchResponses();
-      setSyncing(false);
-    }
-    if(containerRef.current) containerRef.current.scrollTop = containerRef.current.scrollHeight;
+    await syncNotes();
+    dispatch({
+      type: "SET_NOTES",
+      newNotes: getNotesFromLocalStorage(user)
+    })
   }
 
-  /* Note Functions */
-
-  async function handleFetchNote() {
-    await syncData();
-    const fetchedNotes = await fetchNotes();
-    setNotes(fetchedNotes);
-  }
-
-  async function handleAddNote(role: string, content: string, file_paths: string[]) {
-    const id = uuid();
-    const offset = new Date().getTimezoneOffset();
-    const localTime = new Date(new Date().getTime() - offset * 60000).toISOString();
-    const last_updated = localTime;
-    const embedding = await getEmbedding(content);
-    setNotes((prev) => [
-      ...prev,
-      {
-        id,
-        content,
-        embedding,
-        role,
-        last_updated,
-        file_paths,
-      },
-    ]);
-    if(containerRef.current) containerRef.current.scrollTop = containerRef.current.scrollHeight;
-    // Store in local storage to prevent data lost
-    upsertNoteToLocalStorage(user, {id, content, embedding, role, last_updated, file_paths});
-    // Store in database
-    await upsertNote({
-      id,
-      role,
-      content,
-      embedding,
-      last_updated
-    });
-  }
-
-  async function handleUpdateNote(id: string, content: string, embedding: number[]) {
-    const offset = new Date().getTimezoneOffset();
-    const localTime = new Date(new Date().getTime() - offset * 60000).toISOString();
-    const updateTime = localTime;
-    const newNotes = notes
-      .map((n) => (n.id === id ? { ...n, content: content, last_updated: updateTime } : n)) // Update the element
-      .filter((n) => n.id !== id); // Remove the updated element from its current position
-    const updatedNote = notes.find((n) => n.id === id); // Find the updated element
-    if (updatedNote) {
-      updatedNote.content = content;
-      newNotes.push(updatedNote); // Move the updated element to the end
-    }
-    setNotes(newNotes);
-    // Store in local storage to prevent data lost
-    upsertNoteToLocalStorage(user, {id, role: "user", content, last_updated: updateTime, file_paths: []})
-    // Store in supabase
-    updateNote(id, content, embedding, updateTime);
-  }
-
-  const handleDeleteNote = (id: string) => {
-    const updatedNotes = notes.filter((n) => n.id !== id);
-    setNotes(updatedNotes);
-    // Update local storage
-    localStorage.setItem(`${user?.id}-notes` || "guest-notes", JSON.stringify(updatedNotes));
-    // Update supabase
-    deleteNote(id);
-  }
-
-  /* Note Syncing */
-
-  const getNotesFromLocalStorage = (): Note[] => {
-    let storedNotesStr = localStorage.getItem(user ? `${user?.id}-notes` : "guest-notes");
-    if(!storedNotesStr) return [];
-    let storedNotes = JSON.parse(storedNotesStr);
-    return storedNotes;
-  }
-
-  const getResponsesFromLocalStorage = (): Response[] => {
-    let storedResponsesStr = localStorage.getItem(user ? `${user?.id}-responses` : "guest-responses");
-    if(!storedResponsesStr) return [];
-    let storedResponses = JSON.parse(storedResponsesStr);
-    return storedResponses;
-  }
-
-  // * Notes are being stored both in local storage and supabase.
-  // * To enable offline note taking as well as preventing data lost
-  // * before being stored in supabase.
-  // * So everytime app start will need to sync notes to the newest version.
-  const syncData = async () => {
+  const syncNotes = async () => {
     // Load notes from local storage and Supabase
-    const localNotes = getNotesFromLocalStorage();
-    const localResponses = getResponsesFromLocalStorage();
+    const localNotes = getNotesFromLocalStorage(user);
     const supabaseNotes = await fetchNotes();
-    const supabaseResponses = await fetchResponses();
-    
+
     // Create a map for easier comparison
     const localNotesMap = new Map(localNotes.map(n => [n.id, n]));
-    const localResponsesMap = new Map(localResponses.map(r=> [r.id, r]));
     const supabaseNotesMap = new Map(supabaseNotes.map(n => [n.id, n]));
-    const supabaseResponsesMap = new Map(supabaseResponses.map(r => [r.id, r]));
 
     // Compare and synchronize
     for (const [id, localNote] of localNotesMap) {
-      const supabaseNote = supabaseNotesMap.get(id);
+        const supabaseNote = supabaseNotesMap.get(id);
 
-      if (!supabaseNote || new Date(localNote.last_updated) > new Date(supabaseNote.last_updated)) {
+        if (!supabaseNote || new Date(localNote.created_at) > new Date(supabaseNote.created_at)) {
         // Local note is newer or does not exist in Supabase
         // Update or insert to supabase
         const embedding = await getEmbedding(localNote.content);
         if(localNote.role == 'user') {
-          upsertNote({...localNote, embedding});
+            upsertNote({...localNote, embedding});
         }
-      } else if (new Date(localNote.last_updated) < new Date(supabaseNote.last_updated)) {
+        } else if (new Date(localNote.created_at) < new Date(supabaseNote.created_at)) {
         // Supabase note is newer
         upsertNoteToLocalStorage(user, supabaseNote);
-      }
+        }
     }
 
     // Handle notes that are only in Supabase
     for (const [id, supabaseNote] of supabaseNotesMap) {
-      if (!localNotesMap.has(id)) {
-        upsertNoteToLocalStorage(user, supabaseNote);
-      }
-    }
-
-    // Handle responses that are only in Supabase
-    for (const [id, supabaseResponse] of supabaseResponsesMap) {
-      if (!localResponsesMap.has(id)) {
-        upsertResponseToLocalStorage(user, supabaseResponse);
-      }
+        if (!localNotesMap.has(id)) {
+            upsertNoteToLocalStorage(user, supabaseNote);
+        }
     }
   }
 
-  /* Responses Functions */
-
-  async function handleFetchResponses() {
-    if(user) {
-      setResponses(await fetchResponses());
-    }
-  }
-
-  async function handleAddResponse(id: string, content: string, knowledge_base: {id: string, similarity: number}[]) {
-    const offset = new Date().getTimezoneOffset();
-    const localTime = new Date(new Date().getTime() - offset * 60000).toISOString();
-    const created_at = localTime;
-    const embedding = await getEmbedding(content);
-    setResponses((prev) => [
-      ...prev.slice(0, -1),
-      {
-        id,
-        content,
-        embedding,
-        created_at,
-        knowledge_base,
-      },
-    ]);
-    // Store in local
-    // Store in database
-    await addResponses({
-      content,
-      embedding,
-      knowledge_base,
-    });
-  }
-
-  async function handleHybridSearch(query: string) {
-    const embedding = await getEmbedding(query);
-    const data = await hybridSearch(query, embedding);
-    return data;
-  }  
-
-  async function handleChat(input: string) {
+  const handleChat = async (input: string) => {
     const id = uuid();
-    const offset = new Date().getTimezoneOffset();
-    const localTime = new Date(new Date().getTime() - offset * 60000).toISOString();
-    setResponses((prev) => [
-      ...prev,
-      {
-        id,
-        content: "",
-        embedding: [],
-        created_at: localTime,
-        knowledge_base: [],
-      },
-    ]);
-    const data = await handleHybridSearch(input);
-    const response = await chatWithNotes(input, notes);
-    // Store in local storage
-    const created_at = localTime;
-    upsertResponseToLocalStorage(user, {id, content: response || "", created_at, knowledge_base: []})
-    // Store in database
+    dispatch({
+      type: "ADD_NOTE",
+      id,
+      role: "assistant",
+      content: "",
+    })
+    const embedding = await getEmbedding(input);
+    const data = await hybridSearch(input, embedding);
+    const response = await chatWithNotes(input, data.map(note => `${note.content} (updated: ${note.created_at})`).join(','));
     if(!response) return;
-    handleAddResponse(id, response, data);
+    dispatch({
+      type: "UPDATE_NOTE",
+      id,
+      content: response,
+      knowledge_base: data
+    })
   }
 
   const handleInputChange: React.ChangeEventHandler<HTMLInputElement> = async (e) => {
@@ -299,22 +138,22 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
     }
   }
 
-  function extractCommonPrefix(strings: string[]): string {
-      if (strings.length === 0) return "";
-
-      let prefix = strings[0]; // Start with the first string
-
-      for (let i = 1; i < strings.length; i++) {
-          while (strings[i].indexOf(prefix) !== 0) {
-              prefix = prefix.slice(0, -1); // Trim the prefix from the end
-              if (prefix === "") return ""; // If no common prefix, return empty string
-          }
-      }
-
-      return prefix;
-  }
-
   const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+    function extractCommonPrefix(strings: string[]): string {
+        if (strings.length === 0) return "";
+
+        let prefix = strings[0]; // Start with the first string
+
+        for (let i = 1; i < strings.length; i++) {
+            while (strings[i].indexOf(prefix) !== 0) {
+                prefix = prefix.slice(0, -1); // Trim the prefix from the end
+                if (prefix === "") return ""; // If no common prefix, return empty string
+            }
+        }
+
+        return prefix;
+    }
+
     if (e.key == "Tab") {
       if (commandSuggestions.length > 0) {
         setInput(extractCommonPrefix(commandSuggestions));
@@ -327,7 +166,6 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
     } 
     if (e.key === "Enter" && !isComposing) {
       const input = (e.target as HTMLInputElement).value; // Cast e.target
-      const tfiles = files.map(f => f.path);
       setInput("");
       setFiles([]);
       if (input) {
@@ -339,11 +177,19 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
         }
         else if (input.startsWith(' ')) {
           // Search notes if first two characters are spaces
-          await handleAddNote('user', input.trim(), tfiles);
+          dispatch({
+            type: "ADD_NOTE",
+            role: "user",
+            content: input.trim(),
+          })
           await handleChat(input.trim());
           setEditing(null); // Close note editor
         } else {
-          await handleAddNote('user', input, tfiles);
+          dispatch({
+            type: "ADD_NOTE",
+            role: "user",
+            content: input,
+          })
           setEditing(null); // Close note editor
         }
         //(e.target as HTMLInputElement).value = ""; // Clear the input field
@@ -373,52 +219,10 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
     );
   };
 
-  /*useEffect(() => {
-    syncNotes();
-  }, [])*/
-
   // Update notes and user info when user changes
   useEffect(() => {
     update();
   }, [user]);
-
-  const DeleteConfirmationPopup = ({note, onDelete, onCancel}: {note: Note, onDelete: () => void, onCancel: () => void}) => {
-    const ref = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-      const handleClickOutside = (event: MouseEvent) => {
-        if (ref.current && !ref.current.contains(event.target as Node)) {
-          onCancel();
-        }
-      };
-  
-      document.addEventListener('mousedown', handleClickOutside);
-  
-      // Cleanup the event listener
-      return () => {
-        document.removeEventListener('mousedown', handleClickOutside);
-      };
-    }, [onCancel]);
-    
-    return <div ref={ref} className='flex items-center justify-center h-[100vh] w-[100vw] bg-black bg-opacity-50 absolute bg-[#212121]'>
-      <div className='flex flex-col w-[16rem] bg-[#212121] p-3 rounded-md'>
-        <h1 className='text-base font-semibold'>Delete Note</h1>
-        <p className='py-2'>Are you sure you want to delete this note?</p>
-        <div className='border border-[#515151] rounded-md my-3 mb-6'>
-          <UserNote content={note.content} filePaths={note.file_paths || []}/>
-        </div>
-        <div className='grow'/>
-        <div className='flex justify-end font-semibold'>
-          <button onClick={()=>onCancel()} className='px-6 bg-transparent'>
-            Cancel
-          </button>
-          <button onClick={()=>onDelete()} className='px-4 py-1 m-0 bg-red-600 hover:bg-red-900'>
-            Delete
-          </button>
-        </div>
-      </div>
-    </div>
-  }
 
   const [deletingNote, setDeletingNote] = useState<Note|null>(null); // Delete confirmation note
 
@@ -440,6 +244,7 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
     );
   };
 
+  // TODO: Need to change to inline
   const handleDrop = async (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     const file = event.dataTransfer.files[0];
@@ -472,6 +277,43 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
 
   const [files, setFiles] = useState<{name: string, path: string, url: string}[]>([]);
 
+  const [loading, setLoading] = useState(false);
+
+  const handleScroll = async (e: React.UIEvent<HTMLDivElement>) => {
+    const chatContainer = e.currentTarget;
+    if (chatContainer.scrollTop < 50 && !loading) {
+      setLoading(true);
+
+      const oldestNotes = notes[notes.length - 1];
+      if (!oldestNotes) return;
+
+      const olderNotes = await fetchNotesBatch(oldestNotes.id);
+      dispatch({
+        type: "ADD_NOTES",
+        notes: olderNotes
+      })
+
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const subscription = supabase
+      .channel("notes") // Channel name (can be any unique string)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notes" }, (payload) => {
+        dispatch({
+          type: "UPDATE_NOTE",
+          id: payload.new.id, // Ensuring we use latest state
+          content: payload.new.content
+        });
+      })
+      .subscribe();
+  
+    return () => {
+      subscription.unsubscribe(); // Proper cleanup
+    };
+  }, [dispatch]);
+
   return (
     <div 
       onDrop={handleDrop}
@@ -483,9 +325,12 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
             confirmDelete={() => setDeletingNote(editing)}
             onChange={async (e) => {
               const value = e.target.value;
-              await handleUpdateNote(editing.id, value, []);
-              const embedding = await getEmbedding(value);
-              await handleUpdateNote(editing.id, value, embedding);
+              // Update locally
+              dispatch({
+                type: "UPDATE_NOTE",
+                id: editing.id,
+                content: value
+              })
             }} 
             close={() => {setEditing(null)}}
           />}
@@ -493,7 +338,10 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
         <DeleteConfirmationPopup 
           note={deletingNote!} 
           onDelete={()=>{
-            handleDeleteNote(deletingNote!.id);
+            dispatch({
+              type: "DELETE_NOTE",
+              id: deletingNote!.id,
+            })
             setDeletingNote(null);
             setEditing(null);
           }}
@@ -508,26 +356,28 @@ export function MainPage ({user, setUser}: {user: User | null, setUser: (user: U
         <div className="flex flex-col h-[100vh] w-full bg-[#212121]">
         <div 
           ref={containerRef}
+          onScroll={handleScroll} // Load notes on scroll
           className="pt-3 pb-5 flex-grow overflow-auto flex flex-col scrollbar scrollbar-thumb-blue-500 scrollbar-track-gray-300">
           <NoteChat 
-              notes={notes} 
-              responses={responses}
-              onNoteClick={(note) => {setEditing(note)}} 
-              onNoteChange={async (id: string, content: string) => {
-                await handleUpdateNote(id, content, []);
-                const embedding = await getEmbedding(content);
-                await handleUpdateNote(id, content, embedding);
-              }}
-              openKnowledgeBase={(content, knowledgeBase) => {
-                const knowledgeBaseStr: string[] = []
-                for (let i=0; i<knowledgeBase.length; i++) {
-                  const note = notes.find(n => n.id == knowledgeBase[i].id);
-                  if (note) {
-                    knowledgeBaseStr.push(`${note.content}\n\n[S: ${knowledgeBase[i].similarity}]`)
-                  }
+            notes={notes}
+            onNoteClick={(note) => {setEditing(note)}} 
+            onNoteChange={async (id: string, content: string) => {
+              dispatch({
+                type: "UPDATE_NOTE",
+                id,
+                content
+              })
+            }}
+            openKnowledgeBase={(content, knowledgeBase) => {
+              const knowledgeBaseStr: string[] = []
+              for (let i=0; i<knowledgeBase.length; i++) {
+                const note = notes.find(n => n.id == knowledgeBase[i].id);
+                if (note) {
+                  knowledgeBaseStr.push(`${note.content}\n\n[S: ${knowledgeBase[i].similarity}]`)
                 }
-                setShowKnowledgeBase({content, knowledgeBase: knowledgeBaseStr})
-              }}/>
+              }
+              setShowKnowledgeBase({content, knowledgeBase: knowledgeBaseStr})
+            }}/>
         </div>
         {
           noteSuggestions.length > 0 || commandSuggestions.length > 0 ? 

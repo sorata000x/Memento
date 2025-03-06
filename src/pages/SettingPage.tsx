@@ -2,18 +2,22 @@ import { useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { FaUserCircle } from "react-icons/fa";
 import '../App.css';
-import { User } from "@supabase/supabase-js";
 import { IoIosArrowBack } from "react-icons/io";
 import { useNavigate } from "react-router-dom";
 import {v4 as uuid} from 'uuid';
+import { useProvider } from "../StateProvider";
 
-const SettingPage = ({user, setUser}: {user: User | null, setUser: (user: User | null) => void}) => {
+const SettingPage = () => {
+    const [{ user }, dispatch] = useProvider();
 
     useEffect(() => {
         const fetchUser = async () => {
           const { data: { user: suser } } = await supabase.auth.getUser();
           if (suser && user != suser) {
-            setUser(user);
+            dispatch({
+                type: "SET_USER",
+                user: suser
+            });
           }
         };
         fetchUser();
@@ -24,10 +28,16 @@ const SettingPage = ({user, setUser}: {user: User | null, setUser: (user: User |
                 const suser = session?.user;
                 if(!suser) return;
                 console.log('User signed in:', session?.user);
-                setUser(suser);
+                dispatch({
+                    type: "SET_USER",
+                    user: suser
+                });
             } else if (event == 'SIGNED_OUT') {
                 console.log('User signed out');
-                setUser(null);
+                dispatch({
+                    type: "SET_USER",
+                    user: null
+                });
             } 
         });
         return () => data.subscription.unsubscribe();  
@@ -36,7 +46,10 @@ const SettingPage = ({user, setUser}: {user: User | null, setUser: (user: User |
     const handleLogout = async () => {
         await supabase.auth.signOut();
         console.log("User logged out");
-        setUser(null); // Clear user data after logout
+        dispatch({
+            type: "SET_USER",
+            user: null
+        });
     };
 
     const handleOpenOnboarding: React.MouseEventHandler = (e) => {
@@ -63,7 +76,10 @@ const SettingPage = ({user, setUser}: {user: User | null, setUser: (user: User |
         } else {
             console.log('User signed up:', data.user);
         }
-        setUser(data.user);
+        dispatch({
+            type: "SET_USER",
+            user: data.user
+        });
     }
 
     const navigate = useNavigate();

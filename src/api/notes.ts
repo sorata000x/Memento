@@ -1,8 +1,11 @@
 import { createClient, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { Note } from '../types';
+import { getEmbedding } from './openai';
 
 const SUPABASE_URL = "https://vmosommpjhpawkanucoo.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZtb3NvbW1wamhwYXdrYW51Y29vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzUwMTg4NTcsImV4cCI6MjA1MDU5NDg1N30.XtL4l5rEajnnOslELP9iITQynlXTOjaV_3p-c_vSKFc";
+const PAGE_SIZE = 50;
 
 export const addUserToDatabase = async (user: User) => {
     if (!user) return;
@@ -11,7 +14,7 @@ export const addUserToDatabase = async (user: User) => {
     console.log(`user.id: ${user.id}`)
       const { data, error } = await supabase.from('users').upsert([{
         id: user.id, // Use the user's unique ID
-        last_updated: new Date().toISOString(),
+        created_at: new Date().toISOString(),
         email: user.email, // User's email
         name: user.user_metadata?.full_name || null, // Optional: Use the user's name from metadata
       }],
@@ -91,7 +94,24 @@ export async function fetchNotes() {
         .from('notes')
         .select('*')
         .eq('user_id', userId)
-        .order('last_updated', { ascending: true });
+        .order('created_at', { ascending: true });
+
+    if (notesError) throw notesError;
+    return notes;
+}
+
+export async function fetchNotesBatch(above: string) {
+    const { data, error } = await supabase.auth.getUser();
+    const userId = data?.user?.id;
+
+    if (error || !userId) throw new Error('User not authenticated');
+
+    const { data: notes, error: notesError } = await supabase
+        .from("messages")
+        .select("*")
+        .order("created_at", { ascending: false }) // Keep order consistent
+        .lt("id", above) // Fetch messages older than the oldest one we have
+        .limit(PAGE_SIZE);
 
     if (notesError) throw notesError;
     return notes;
@@ -121,7 +141,7 @@ export async function addNote({ role, content, embedding, filePaths }: {
 }
 
 // Update note
-export async function updateNote(id: string, content: string, embedding: number[], last_updated: string) {
+export async function updateNote(id: string, content: string, embedding: number[], knowledge_base?: {id: string, similarity: number}[]) {
     const { data, error } = await supabase.auth.getUser();
     const userId = data?.user?.id;
 
@@ -129,38 +149,28 @@ export async function updateNote(id: string, content: string, embedding: number[
 
     const { data: updatedNote, error: updateError } = await supabase
         .from('notes')
-        .update({ content, embedding, last_updated })
+        .update({ content, embedding, knowledge_base })
         .eq('id', id); // Ensures the note belongs to the user
 
     if (updateError || !updatedNote) throw updateError;
     return updatedNote[0];
 }
 
-export async function upsertNote({
-    id,
-    role,
-    content,
-    embedding,
-    last_updated,
-}: {
-    id?: string; // Optional, if not provided, it will add a new note
-    role: string;
-    content: string;
-    embedding: number[];
-    last_updated: string;
-}) {
+export async function upsertNote(newNote: Note) {
     const { data, error } = await supabase.auth.getUser();
     const userId = data?.user?.id;
   
     if (error || !userId) throw new Error('User not authenticated');
+
+    const embedding = await getEmbedding(newNote.content);
   
     try {
-      if (id) {
+      if (newNote.id) {
         // Try updating the note
         const { data: updatedNote, error: updateError } = await supabase
           .from('notes')
-          .update({ content, role, embedding })
-          .eq('id', id)
+          .update({ content: newNote.content, role: newNote.role, embedding })
+          .eq('id', newNote.id)
           .eq('user_id', userId)
           .select(); // Ensures the data returned is queryable
   
@@ -173,14 +183,14 @@ export async function upsertNote({
       }
   
       // If no id is provided or the update didn't find a matching note, insert a new note
-      const { data: newNote, error: insertError } = await supabase
+      const { data: newNotes, error: insertError } = await supabase
         .from('notes')
-        .insert({ id, role, content, embedding, user_id: userId, last_updated })
+        .insert({ ...newNote, user_id: userId, embedding })
         .select('*');
   
       if (insertError) throw insertError;
   
-      return newNote[0];
+      return newNotes[0];
     } catch (e) {
       console.log(`Error: ${JSON.stringify(e)}`);
       throw e;

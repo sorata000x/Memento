@@ -13,11 +13,11 @@ export async function searchNotesByPrefix(prefix: string): Promise<Note[]> {
 
   const { data: notes, error: notesError } = await supabase
     .from("notes")
-    .select("id, content, role, last_updated, embedding, file_paths")
+    .select("id, content, role, created_at, embedding, file_paths")
     .eq('user_id', userId)
     .eq('role', 'user')
     .ilike("content", `${prefix}%`) // Case-insensitive matching for prefix
-    .order('last_updated', { ascending: true });
+    .order('created_at', { ascending: true });
 
   if (notesError) throw notesError;
   return notes || [];
@@ -26,7 +26,7 @@ export async function searchNotesByPrefix(prefix: string): Promise<Note[]> {
 export async function hybridSearch(
   query: string,
   embedding: number[]
-): Promise<{ id: string; content: string; similarity: number; last_updated: string }[]> {
+): Promise<{ id: string; content: string; similarity: number; created_at: string }[]> {
   const { data, error } = await supabase.auth.getUser();
   const userId = data?.user?.id;
   if (error || !userId) throw new Error('User not authenticated');

@@ -30,17 +30,8 @@ export async function getEmbedding(content: string) {
   }
 }
 
-type Note = {
-  id: string,
-  content: string,
-  last_updated: string;
-}
-
-export async function chatWithNotes(input: string, notes: Note[]) {
+export async function chatWithNotes(input: string, context: string) {
   try {
-    // Combine notes into a contextual string
-    let context = notes.map(note => `${note.content} (updated: ${note.last_updated})`).join(',');
-
     const offset = new Date().getTimezoneOffset();
     const localTime = new Date(new Date().getTime() - offset * 60000).toISOString();
 

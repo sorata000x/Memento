@@ -1,4 +1,4 @@
-export type Note = {
+export type Note_old = {
   id: string;
   content: string;
   role: string;
@@ -15,10 +15,12 @@ export type Response = {
   knowledge_base: {id: string, similarity: number}[];
 };
 
-export type Message = {
+export type Note = {
   id: string,
   content: string;
-  time: string;
-  type: string;
+  created_at: string;
+  embedding?: number[];
   file_paths?: string[];
+  role?: string;
+  knowledge_base?: {id: string, similarity: number}[];
 }
