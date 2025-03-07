@@ -17,6 +17,7 @@ import DeleteConfirmationPopup from '../components/DeleteConfirmationPopup';
 import { fetchNotes, fetchNotesBatch, upsertNote } from '../api/notes';
 import { getNotesFromLocalStorage, upsertNoteToLocalStorage } from '../utility/localstoarge';
 import { chatWithNotes, getEmbedding } from '../api/openai';
+import { NotificationManager } from '../utility/notification';
 
 export function MainPage () {
   const [editing, setEditing] = useState<Note | null>(null);
@@ -27,6 +28,33 @@ export function MainPage () {
   const [isSyncing, setSyncing] = useState(false);
   const [isComposing, setIsComposing] = useState(false);
   const [{ notes, user }, dispatch] = useProvider();
+
+  useEffect(() => {
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN') {
+        if (!session?.user || session?.user?.id === user?.id) return; 
+        console.log('User signed in:', session?.user);
+        dispatch({
+          type: "SET_USER",
+          user: session?.user
+        });
+        const url = new URL(window.location.href);
+        const authSuccess = url.searchParams.get("auth");
+        console.log(`authSuccess: ${authSuccess}`)
+        if (authSuccess === "success") {
+            console.log("Authentication successful, closing window...");
+            window.close(); // Close the popup or tab
+        }
+      } else if (event == 'SIGNED_OUT') {
+        console.log('User signed out');
+        dispatch({
+          type: "SET_USER",
+          user: null
+        });
+      } 
+    });
+    return () => data.subscription.unsubscribe();  
+  }, [])
 
   /**
    * Reset states
@@ -105,12 +133,43 @@ export function MainPage () {
     const data = await hybridSearch(input, embedding);
     const response = await chatWithNotes(input, data.map(note => `${note.content} (updated: ${note.created_at})`).join(','));
     if(!response) return;
-    dispatch({
-      type: "UPDATE_NOTE",
-      id,
-      content: response,
-      knowledge_base: data
-    })
+    if(response.function_call) {
+      const functionName = response.function_call.name;
+      const functionArgs = JSON.parse(response.function_call.arguments);
+      console.log(`functionArgs: ${JSON.stringify(functionArgs)}`);
+      const formatDate = (isoString: string) => {
+        const date = new Date(isoString);
+        return date.toLocaleString(); // Adjust based on locale
+      };
+      if (functionName === 'setReminder') {
+        try {
+          await setReminder(functionArgs.message, functionArgs.reminderTime);
+          console.log(143)
+          dispatch({
+            type: "UPDATE_NOTE",
+            id,
+            content: `Set a reminder for ${functionArgs.message} at ${formatDate(functionArgs.reminderTime)}`,
+            knowledge_base: data
+          })
+        } catch {
+          dispatch({
+            type: "UPDATE_NOTE",
+            id,
+            content: `Error setting reminder`,
+            knowledge_base: data
+          })
+        }
+      }
+    }
+    console.log(`response.content: ${response.content}`)
+    if(response.content) {
+      dispatch({
+        type: "UPDATE_NOTE",
+        id,
+        content: response.content,
+        knowledge_base: data
+      })
+    }
   }
 
   const handleInputChange: React.ChangeEventHandler<HTMLInputElement> = async (e) => {
@@ -182,6 +241,7 @@ export function MainPage () {
             role: "user",
             content: input.trim(),
           })
+          if(containerRef.current) containerRef.current.scrollTop = containerRef.current.scrollHeight;
           await handleChat(input.trim());
           setEditing(null); // Close note editor
         } else {
@@ -190,6 +250,7 @@ export function MainPage () {
             role: "user",
             content: input,
           })
+          if(containerRef.current) containerRef.current.scrollTop = containerRef.current.scrollHeight;
           setEditing(null); // Close note editor
         }
         //(e.target as HTMLInputElement).value = ""; // Clear the input field
@@ -313,6 +374,19 @@ export function MainPage () {
       subscription.unsubscribe(); // Proper cleanup
     };
   }, [dispatch]);
+
+  const setReminder = async (message: string, reminderTime: string) => {
+    console.log(`setReminder: message: ${message}, reminderTime: ${reminderTime}`)
+    try {
+      const reminderId = await NotificationManager.setReminder(
+        message,                 // Message content
+        reminderTime            // Time as Date string
+      );
+      console.log('Reminder set with ID:', reminderId);
+    } catch (error) {
+      console.error('Error setting reminder:', error);
+    }
+  };
 
   return (
     <div 

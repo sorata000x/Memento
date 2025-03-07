@@ -30,7 +30,6 @@ const NoteChat = ({
           last_date = formattedDate;
           components.push(<ChatDateDivider key={uuid()} date={last_date} />)
         }
-        console.log(`n.role: ${n.role}`)
         if (n.role == 'assistant') {
           components.push(<AssistantNote key={n.id} content={n.content} onClick={() => openKnowledgeBase(n.content, n.knowledge_base || [])} />)
         } else {
@@ -39,7 +38,7 @@ const NoteChat = ({
               key={n.id} 
               content={n.content} 
               filePaths={n.file_paths || []} 
-              onClick={() => onNoteClick(notes.find(n => n.id == n.id) || null)}
+              onClick={() => onNoteClick(n)}
               onChange={(content: string) => onNoteChange(n.id, content)}
               />)
         } 

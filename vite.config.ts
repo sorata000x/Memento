@@ -17,6 +17,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: './index.html',         // Main app entry
+        background: './background.js',
         onboarding: './onboarding.html', // Onboarding entry
         setting: './setting.html',
       },

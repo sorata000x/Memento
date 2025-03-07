@@ -56,10 +56,31 @@ export async function chatWithNotes(input: string, context: string) {
 
     console.log(`messages: ${JSON.stringify(messages)}`)
 
+    const functions = [
+      {
+        name: 'setReminder',
+        description: 'Set reminder if user want to',
+        parameters: {
+          type: 'object',
+          properties: {
+            message: {
+              type: 'string',
+              description: 'Message to remind user',
+            },
+            reminderTime: {
+              type: 'string',
+              description: 'Time to remind user',
+            },
+          },
+          required: ['message', 'reminderTime'],
+        },
+      },
+    ];
+
     const chatCompletionResponse = await fetch('https://memento-backend-two.vercel.app/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages }),
+      body: JSON.stringify({ messages, functions }),
     });
     
     // Check if the response is OK (status 200)
@@ -71,7 +92,7 @@ export async function chatWithNotes(input: string, context: string) {
     const response = await chatCompletionResponse.json();
     
     // Return the assistant's response
-    return response.content;
+    return response;
   } catch (error) {
     console.error('Error in chatWithNotes:', error);
     throw error;
