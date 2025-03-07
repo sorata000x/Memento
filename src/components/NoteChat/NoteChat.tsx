@@ -1,13 +1,15 @@
 import { Note } from "../../types";
-import { AssistantNote, ChatDateDivider, UserNote } from "./components";
+import { AssistantNote, ChatDateDivider, LoadingNote, UserNote } from "./components";
 import {v4 as uuid} from 'uuid';
 
 const NoteChat = ({
+  loading,
   notes, 
   onNoteClick,
   onNoteChange,
   openKnowledgeBase,
 }: {
+  loading: boolean,
   notes: Note[], 
   onNoteClick: (n: Note | null) => void,
   onNoteChange: (id: string, content: string) => void,
@@ -16,6 +18,11 @@ const NoteChat = ({
 
   let last_date: string;
   return <>
+    {
+      loading ? 
+      [1, 2, 3, 4, 5].map(_ => <LoadingNote
+      />) : null
+    }
     {
       notes.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()).map((n) => {
         const components = [];

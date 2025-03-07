@@ -15,6 +15,10 @@ const SettingPage = () => {
           const { data: { user: suser } } = await supabase.auth.getUser();
           if (suser && user != suser) {
             dispatch({
+                type: "SET_NOTES",
+                newNotes: []
+              });
+            dispatch({
                 type: "SET_USER",
                 user: suser
             });
@@ -29,11 +33,19 @@ const SettingPage = () => {
                 if(!suser) return;
                 console.log('User signed in:', session?.user);
                 dispatch({
+                    type: "SET_NOTES",
+                    newNotes: []
+                  });
+                dispatch({
                     type: "SET_USER",
                     user: suser
                 });
             } else if (event == 'SIGNED_OUT') {
                 console.log('User signed out');
+                dispatch({
+                    type: "SET_NOTES",
+                    newNotes: []
+                  });
                 dispatch({
                     type: "SET_USER",
                     user: null

@@ -33,6 +33,7 @@ export function MainPage () {
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN') {
         if (!session?.user || session?.user?.id === user?.id) return; 
+        init();
         console.log('User signed in:', session?.user);
         dispatch({
           type: "SET_USER",
@@ -40,13 +41,13 @@ export function MainPage () {
         });
         const url = new URL(window.location.href);
         const authSuccess = url.searchParams.get("auth");
-        console.log(`authSuccess: ${authSuccess}`)
         if (authSuccess === "success") {
             console.log("Authentication successful, closing window...");
             window.close(); // Close the popup or tab
         }
       } else if (event == 'SIGNED_OUT') {
         console.log('User signed out');
+        init();
         dispatch({
           type: "SET_USER",
           user: null
@@ -342,6 +343,7 @@ export function MainPage () {
 
   const handleScroll = async (e: React.UIEvent<HTMLDivElement>) => {
     const chatContainer = e.currentTarget;
+    console.log(`chatContainer.scrollTop: ${chatContainer.scrollTop}`)
     if (chatContainer.scrollTop < 50 && !loading) {
       setLoading(true);
 
@@ -349,9 +351,10 @@ export function MainPage () {
       if (!oldestNotes) return;
 
       const olderNotes = await fetchNotesBatch(oldestNotes.id);
+      
       dispatch({
         type: "ADD_NOTES",
-        notes: olderNotes
+        newNotes: olderNotes
       })
 
       setLoading(false);
@@ -433,6 +436,7 @@ export function MainPage () {
           onScroll={handleScroll} // Load notes on scroll
           className="pt-3 pb-5 flex-grow overflow-auto flex flex-col scrollbar scrollbar-thumb-blue-500 scrollbar-track-gray-300">
           <NoteChat 
+            loading={loading}
             notes={notes}
             onNoteClick={(note) => {setEditing(note)}} 
             onNoteChange={async (id: string, content: string) => {

@@ -14,6 +14,10 @@ function App() {
         if (!session?.user || session?.user?.id === user?.id) return; 
         console.log('User signed in:', session?.user);
         dispatch({
+          type: "SET_NOTES",
+          newNotes: []
+        });
+        dispatch({
           type: "SET_USER",
           user: session?.user
         });
@@ -26,6 +30,10 @@ function App() {
         }
       } else if (event == 'SIGNED_OUT') {
         console.log('User signed out');
+        dispatch({
+          type: "SET_NOTES",
+          newNotes: []
+        });
         dispatch({
           type: "SET_USER",
           user: null

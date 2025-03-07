@@ -17,7 +17,7 @@ const NoteEdit = ({content, confirmDelete, onChange, close}: {content: string, c
     }, []);
     
     return (
-      <div className='absolute flex flex-col h-full w-full bg-[#212121] p-3'>
+      <div className='absolute z-50 flex flex-col h-[calc(100%-5.97rem)] w-full bg-[#212121] p-3'>
         {showMorePopUp ? 
           <MorePopUp 
             confirmDelete={confirmDelete} 

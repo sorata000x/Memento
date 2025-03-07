@@ -72,10 +72,17 @@ const reducer = (state: StateData, action: StateAction): StateData => {
         console.error("Operation ADD_NOTES requires {newNotes} attribute");
         return state;
       }
+      // Get existing note IDs
+      const existingIds = new Set(state.notes.map(note => note.id));
+
+      // Filter out notes that already exist
+      const filteredNotes = action.newNotes.filter(note => !existingIds.has(note.id));
+
+      // Return updated state
       return {
         ...state,
-        notes: [...state.notes, ...action.newNotes]
-      }
+        notes: [...state.notes, ...filteredNotes]
+      };
     }
     case "ADD_NOTE": {
         console.debug("ADD_NOTE");

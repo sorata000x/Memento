@@ -106,8 +106,10 @@ export async function fetchNotesBatch(above: string) {
 
     if (error || !userId) throw new Error('User not authenticated');
 
+    console.log(`fetch`)
+
     const { data: notes, error: notesError } = await supabase
-        .from("messages")
+        .from("notes")
         .select("*")
         .order("created_at", { ascending: false }) // Keep order consistent
         .lt("id", above) // Fetch messages older than the oldest one we have

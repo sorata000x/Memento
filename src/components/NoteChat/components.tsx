@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { FileObject } from "@supabase/storage-js";
 import remarkGfm from "remark-gfm";
+import { IoIosMore } from "react-icons/io";
 
 export const Suggestion = ({text, onClick}: {text: string, onClick: () => void}) => {
     return (
@@ -155,13 +156,37 @@ export const UserNote = ({content, filePaths, onClick, onChange}: {content: stri
   const processedContent = content
     .replace(/\n/g, "  \n")
 
+  const [isHovering, setHovering] = useState(false);
+  const [isHoveringMore, setHoveringMore] = useState(false);
+
   return (
-      <div className="p-4 pt-2 pb-2 w-full user-Note cursor-pointer hover:bg-[#202020]" onClick={onClick}>
+      <div 
+        className="p-4 pt-2 pb-2 w-full user-Note hover:bg-[#202020] relative" 
+        onMouseOver={()=>setHovering(true)}
+        onMouseOut={()=>setHovering(false)}>
         <CheckboxMarkdown content={processedContent} onContentChange={(content: string) => {
           if(onChange) {
             onChange(content);
           }
         }}/>
+        { 
+          isHoveringMore ?
+          <div className="absolute right-4 top-[-1.5rem] bg-[#181818] p-1 px-3 rounded-md">Edit</div>
+          : null
+        }
+        { 
+          isHovering ?
+          <div className="absolute right-4 top-1 hover:bg-[#303030] p-1 rounded-md cursor-pointer"
+            onClick={onClick}
+            onMouseOver={()=>setHoveringMore(true)}
+            onMouseOut={()=>setHoveringMore(false)}
+          >
+            <IoIosMore 
+              size={20}
+              />
+          </div>
+          : null
+        }
         { fileData.length > 0 ? 
           <div className='flex rounded-lg overflow-scroll gap-3 p-3'>
             {fileData.map((d, index) => (
@@ -184,6 +209,16 @@ export const UserNote = ({content, filePaths, onClick, onChange}: {content: stri
           </div> : null
         }
         {/*<p className='text-end pt-1 text-[#565656]' style={{fontSize: "10pt"}}>{formattedDate}</p> */}
+      </div>
+    )
+}
+
+export const LoadingNote = () => {
+
+  return (
+      <div 
+        className="p-4 pt-2 pb-2 w-full">
+        <div className="bg-[#313131] rounded-lg w-full h-5"></div>
       </div>
     )
 }

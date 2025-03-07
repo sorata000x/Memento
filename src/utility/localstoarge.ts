@@ -1,12 +1,6 @@
 import { User } from "@supabase/supabase-js";
 import { Note } from "../types";
 
-const MAX_STORAGE_SIZE = 5 * 1024 * 1024; 
-
-function getSizeInBytes(str: string) {
-    return new Blob([str]).size; // Approximate size calculation
-}
-
 export const getNotesFromLocalStorage = (user: User | null): Note[] => {
     let storedNotesStr = localStorage.getItem(user ? user.id : "guest");
     if(!storedNotesStr) return [];
@@ -31,7 +25,7 @@ export function upsertNoteToLocalStorage(user: User | null, note: Note) {
   }
 
   // Ensure storage size does not exceed limit
-  while (getSizeInBytes(JSON.stringify(storedNotes)) > MAX_STORAGE_SIZE) {
+  while (storedNotes.length > 10) {
     storedNotes.shift(); // Remove oldest entry
   }
 
