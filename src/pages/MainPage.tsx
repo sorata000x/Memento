@@ -14,7 +14,7 @@ import { supabase } from '../lib/supabase';
 import { IoIosClose } from "react-icons/io";
 import { useProvider } from '../StateProvider';
 import DeleteConfirmationPopup from '../components/DeleteConfirmationPopup';
-import { fetchNotes, fetchNotesBatch, upsertNote } from '../api/notes';
+import { fetchNotes, upsertNote } from '../api/notes';
 import { getNotesFromLocalStorage, upsertNoteToLocalStorage } from '../utility/localstoarge';
 import { chatWithNotes, getEmbedding } from '../api/openai';
 import { NotificationManager } from '../utility/notification';
@@ -80,12 +80,13 @@ export function MainPage () {
     dispatch({
       type: "FETCH_INITIAL_NOTES",
     })
-    if(containerRef.current) containerRef.current.scrollTop = containerRef.current.scrollHeight;
+    if(notes && containerRef.current) containerRef.current.scrollTop = containerRef.current.scrollHeight;
     await syncNotes();
     dispatch({
       type: "SET_NOTES",
       newNotes: getNotesFromLocalStorage(user)
     })
+    if(containerRef.current) containerRef.current.scrollTop = containerRef.current.scrollHeight;
   }
 
   const syncNotes = async () => {
@@ -102,11 +103,9 @@ export function MainPage () {
         const supabaseNote = supabaseNotesMap.get(id);
 
         if (!supabaseNote || new Date(localNote.created_at) > new Date(supabaseNote.created_at)) {
-        // Local note is newer or does not exist in Supabase
-        // Update or insert to supabase
-        const embedding = await getEmbedding(localNote.content);
+          
         if(localNote.role == 'user') {
-            upsertNote({...localNote, embedding});
+            upsertNote({...localNote});
         }
         } else if (new Date(localNote.created_at) < new Date(supabaseNote.created_at)) {
         // Supabase note is newer
@@ -339,28 +338,6 @@ export function MainPage () {
 
   const [files, setFiles] = useState<{name: string, path: string, url: string}[]>([]);
 
-  const [loading, setLoading] = useState(false);
-
-  const handleScroll = async (e: React.UIEvent<HTMLDivElement>) => {
-    const chatContainer = e.currentTarget;
-    console.log(`chatContainer.scrollTop: ${chatContainer.scrollTop}`)
-    if (chatContainer.scrollTop < 50 && !loading) {
-      setLoading(true);
-
-      const oldestNotes = notes[notes.length - 1];
-      if (!oldestNotes) return;
-
-      const olderNotes = await fetchNotesBatch(oldestNotes.id);
-      
-      dispatch({
-        type: "ADD_NOTES",
-        newNotes: olderNotes
-      })
-
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
     const subscription = supabase
       .channel("notes") // Channel name (can be any unique string)
@@ -433,10 +410,8 @@ export function MainPage () {
         <div className="flex flex-col h-[100vh] w-full bg-[#212121]">
         <div 
           ref={containerRef}
-          onScroll={handleScroll} // Load notes on scroll
           className="pt-3 pb-5 flex-grow overflow-auto flex flex-col scrollbar scrollbar-thumb-blue-500 scrollbar-track-gray-300">
           <NoteChat 
-            loading={loading}
             notes={notes}
             onNoteClick={(note) => {setEditing(note)}} 
             onNoteChange={async (id: string, content: string) => {

@@ -50,7 +50,7 @@ const reducer = (state: StateData, action: StateAction): StateData => {
       const localNotes = getNotesFromLocalStorage(state.user);
       return {
         ...state,
-        notes: localNotes
+        notes: localNotes.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
       };
     }
     // Set state only
@@ -62,7 +62,7 @@ const reducer = (state: StateData, action: StateAction): StateData => {
       }
       return {
         ...state,
-        notes: action.newNotes
+        notes: action.newNotes.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
       }
     }
     case "ADD_NOTES": {
@@ -78,10 +78,12 @@ const reducer = (state: StateData, action: StateAction): StateData => {
       // Filter out notes that already exist
       const filteredNotes = action.newNotes.filter(note => !existingIds.has(note.id));
 
+      console.log(`filteredNotes: ${filteredNotes.length}`)
+
       // Return updated state
       return {
         ...state,
-        notes: [...state.notes, ...filteredNotes]
+        notes: [...state.notes, ...filteredNotes].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
       };
     }
     case "ADD_NOTE": {
@@ -98,19 +100,17 @@ const reducer = (state: StateData, action: StateAction): StateData => {
             id,
             content: action.content,
             created_at,
-            embedding: [],
             role: action.role,
             knowledge_base: action.knowledge_base
         }
         upsertNoteToLocalStorage(state.user, note);
         const updateDBNotes = async () => {
-          const embedding = await getEmbedding(action.content);
-          await upsertNote({id, role: action.role, content: action.content, embedding, created_at});
+          await upsertNote({id, role: action.role, content: action.content, created_at});
         }
         updateDBNotes();
         return {
             ...state,
-            notes: [...state.notes, note]
+            notes: [...state.notes, note].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
         }
     }
     case "UPDATE_NOTE": {
@@ -137,7 +137,7 @@ const reducer = (state: StateData, action: StateAction): StateData => {
         updateDBNotes();
         return {
             ...state,
-            notes: newNotes
+            notes: newNotes.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
         }
     }
     case "DELETE_NOTE": {
@@ -147,7 +147,7 @@ const reducer = (state: StateData, action: StateAction): StateData => {
         localStorage.setItem(state.user?.id || "guest", JSON.stringify(updatedNotes));
         return {
             ...state,
-            notes: updatedNotes
+            notes: updatedNotes.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
         }
     }
     default:

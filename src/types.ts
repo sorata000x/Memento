@@ -19,7 +19,6 @@ export type Note = {
   id: string,
   content: string;
   created_at: string;
-  embedding?: number[];
   file_paths?: string[];
   role?: string;
   knowledge_base?: {id: string, similarity: number}[];

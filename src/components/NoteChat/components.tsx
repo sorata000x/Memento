@@ -89,7 +89,6 @@ const CheckboxMarkdown = ({ content, onContentChange }: { content: string, onCon
           <input
             type="checkbox"
             checked={isChecked}
-            onClick={(e) => e.stopPropagation()}
             onChange={() => handleCheckboxToggle(index)}
             className="cursor-pointer"
           />
@@ -171,7 +170,7 @@ export const UserNote = ({content, filePaths, onClick, onChange}: {content: stri
         }}/>
         { 
           isHoveringMore ?
-          <div className="absolute right-4 top-[-1.5rem] bg-[#181818] p-1 px-3 rounded-md">Edit</div>
+          <div className="absolute right-2 top-[-1.5rem] bg-[#181818] p-1 px-3 rounded-md">Edit</div>
           : null
         }
         { 

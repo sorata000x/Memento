@@ -100,13 +100,26 @@ export async function fetchNotes() {
     return notes;
 }
 
+export const fetchNotesCount = async () => {
+    const { data, error } = await supabase.auth.getUser();
+    const userId = data?.user?.id;
+    const { count, } = await supabase
+      .from("notes")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId); // Filter messages by user ID
+
+    if (error) {
+      console.error("Error fetching message count:", error);
+    } else {
+      return count;
+    }
+};
+
 export async function fetchNotesBatch(above: string) {
     const { data, error } = await supabase.auth.getUser();
     const userId = data?.user?.id;
 
     if (error || !userId) throw new Error('User not authenticated');
-
-    console.log(`fetch`)
 
     const { data: notes, error: notesError } = await supabase
         .from("notes")
@@ -114,6 +127,8 @@ export async function fetchNotesBatch(above: string) {
         .order("created_at", { ascending: false }) // Keep order consistent
         .lt("id", above) // Fetch messages older than the oldest one we have
         .limit(PAGE_SIZE);
+
+    console.log(`notes: ${JSON.stringify(notes?.map(n => n.content))}`)
 
     if (notesError) throw notesError;
     return notes;

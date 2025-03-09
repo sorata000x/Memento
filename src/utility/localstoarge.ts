@@ -18,10 +18,10 @@ export function upsertNoteToLocalStorage(user: User | null, note: Note) {
 
   if (existingIndex !== -1) {
     // Note exists → Update it
-    storedNotes[existingIndex] = { ...note, embedding: [], created_at: storedNotes[existingIndex].created_at };
+    storedNotes[existingIndex] = { ...note, created_at: storedNotes[existingIndex].created_at };
   } else {
     // Note does not exist → Add new
-    storedNotes.push({ ...note, embedding: [] });
+    storedNotes.push({ ...note });
   }
 
   // Ensure storage size does not exceed limit
