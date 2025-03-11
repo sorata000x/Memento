@@ -20,7 +20,7 @@ const DeleteConfirmationPopup = ({note, onDelete, onCancel}: {note: Note, onDele
       };
     }, [onCancel]);
     
-    return <div ref={ref} className='flex items-center justify-center h-[100vh] w-[100vw] bg-black bg-opacity-50 absolute bg-[#212121]'>
+    return <div ref={ref} className='z-20 flex items-center justify-center h-[100vh] w-[100vw] bg-black bg-opacity-50 absolute bg-[#212121]'>
       <div className='flex flex-col w-[16rem] bg-[#212121] p-3 rounded-md'>
         <h1 className='text-base font-semibold'>Delete Note</h1>
         <p className='py-2'>Are you sure you want to delete this note?</p>

@@ -82,9 +82,10 @@ export function MainPage () {
     })
     if(notes && containerRef.current) containerRef.current.scrollTop = containerRef.current.scrollHeight;
     await syncNotes();
+    const dbNotes = await fetchNotes();
     dispatch({
       type: "SET_NOTES",
-      newNotes: getNotesFromLocalStorage(user)
+      newNotes: dbNotes
     })
     if(containerRef.current) containerRef.current.scrollTop = containerRef.current.scrollHeight;
   }
@@ -103,7 +104,7 @@ export function MainPage () {
         const supabaseNote = supabaseNotesMap.get(id);
 
         if (!supabaseNote || new Date(localNote.created_at) > new Date(supabaseNote.created_at)) {
-          
+
         if(localNote.role == 'user') {
             upsertNote({...localNote});
         }
