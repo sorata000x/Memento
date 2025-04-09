@@ -2,12 +2,11 @@ import { useEffect, useRef } from "react";
 import { MdDeleteForever } from "react-icons/md";
 
 export const MorePopUp = ({
-  confirmDelete, 
+  confirmDelete,
     closePopUp}: 
     {
-      confirmDelete: () => void, 
-      closePopUp: () => void
-      closeEdit: () => void}) => {
+      confirmDelete: () => void,
+      closePopUp: () => void}) => {
     const ref = useRef<HTMLDivElement>(null);
   
     useEffect(() => {

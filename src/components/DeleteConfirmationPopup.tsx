@@ -25,7 +25,7 @@ const DeleteConfirmationPopup = ({note, onDelete, onCancel}: {note: Note, onDele
         <h1 className='text-base font-semibold'>Delete Note</h1>
         <p className='py-2'>Are you sure you want to delete this note?</p>
         <div className='border border-[#515151] rounded-md my-3 mb-6'>
-          <UserNote content={note.content} filePaths={note.file_paths || []}/>
+          <UserNote note={note}/>
         </div>
         <div className='grow'/>
         <div className='flex justify-end font-semibold'>

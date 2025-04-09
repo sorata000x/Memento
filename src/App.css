@@ -35,3 +35,21 @@ body {
   list-style-type: decimal;
   margin-left: 20px;
 }
+
+.szh-menu {
+  background-color: #000 !important; /* Light gray background */
+  padding: 0.25rem !important;
+  transform: translate(-10px, -30px) !important;
+  border-radius: 8px; /* Optional: Adds rounded corners */
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* Optional: Adds shadow */
+}
+
+/* Override the default hover effect */
+.szh-menu__item {
+  transition: background-color 0.2s ease-in-out;
+  color: white;
+}
+
+.szh-menu__item:hover {
+  background-color: #303030; /* Darker background on hover */
+}

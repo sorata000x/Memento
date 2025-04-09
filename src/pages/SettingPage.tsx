@@ -11,49 +11,36 @@ const SettingPage = () => {
     const [{ user }, dispatch] = useProvider();
 
     useEffect(() => {
-        const fetchUser = async () => {
-          const { data: { user: suser } } = await supabase.auth.getUser();
-          if (suser && user != suser) {
-            dispatch({
-                type: "SET_NOTES",
-                newNotes: []
-              });
-            dispatch({
-                type: "SET_USER",
-                user: suser
-            });
-          }
-        };
-        fetchUser();
-        // Listen to user change
         const { data } = supabase.auth.onAuthStateChange((event, session) => {
-            if (event === 'SIGNED_IN') {
-                if (!session?.user || session?.user?.id === user?.id) return; 
-                const suser = session?.user;
-                if(!suser) return;
-                console.log('User signed in:', session?.user);
-                dispatch({
-                    type: "SET_NOTES",
-                    newNotes: []
-                  });
-                dispatch({
-                    type: "SET_USER",
-                    user: suser
-                });
-            } else if (event == 'SIGNED_OUT') {
-                console.log('User signed out');
-                dispatch({
-                    type: "SET_NOTES",
-                    newNotes: []
-                  });
-                dispatch({
-                    type: "SET_USER",
-                    user: null
-                });
-            } 
+          if (event === 'SIGNED_IN') {
+            if (!session?.user || session?.user?.id === user?.id) return; 
+            dispatch({
+                type: "INIT",
+            });
+            console.log('User signed in:', session?.user);
+            dispatch({
+              type: "SET_USER",
+              user: session?.user
+            });
+            const url = new URL(window.location.href);
+            const authSuccess = url.searchParams.get("auth");
+            if (authSuccess === "success") {
+                console.log("Authentication successful, closing window...");
+                window.close(); // Close the popup or tab
+            }
+          } else if (event == 'SIGNED_OUT') {
+            console.log('User signed out');
+            dispatch({
+                type: "INIT",
+            });
+            dispatch({
+              type: "SET_USER",
+              user: null
+            });
+          } 
         });
         return () => data.subscription.unsubscribe();  
-    }, []);
+      }, [])
 
     const handleLogout = async () => {
         await supabase.auth.signOut();

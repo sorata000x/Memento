@@ -15,20 +15,20 @@ import { IoIosClose } from "react-icons/io";
 import { useProvider } from '../StateProvider';
 import DeleteConfirmationPopup from '../components/DeleteConfirmationPopup';
 import { fetchNotes, upsertNote } from '../api/notes';
-import { getNotesFromLocalStorage, upsertNoteToLocalStorage } from '../utility/localstoarge';
 import { chatWithNotes, getEmbedding } from '../api/openai';
 import { NotificationManager } from '../utility/notification';
+import IndexedDB from '../utility/indexdb';
 
 export function MainPage () {
-  const [editing, setEditing] = useState<Note | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   const [noteSuggestions, setNoteSuggestions] = useState<Note[]>([]);
   const [commandSuggestions, setCommandSuggestions] = useState<string[]>([]);
   const [input, setInput] = useState('');
   const [isSyncing, setSyncing] = useState(false);
   const [isComposing, setIsComposing] = useState(false);
-  const [{ notes, user }, dispatch] = useProvider();
+  const [{ notes, user, editingNote, deletingNote, indexedDB, firstRender }, dispatch] = useProvider();
+  const containerRef = useRef<HTMLDivElement>(null);
 
+  // User Authentication
   useEffect(() => {
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN') {
@@ -57,70 +57,109 @@ export function MainPage () {
     return () => data.subscription.unsubscribe();  
   }, [])
 
-  /**
-   * Reset states
-   */
+  // Reset States
   const init = async () => {
     setSyncing(false)
-    setEditing(null);
     setNoteSuggestions([]);
     setCommandSuggestions([]);
     setInput('');
     dispatch({
-      type: "SET_NOTES",
-      newNotes: []
+      type: "INIT",
     });
+    // Subscribe to supabase updates
+    /*
+    supabase
+      .channel('notes-changes') // name can be anything
+      .on(
+        'postgres_changes',
+        {
+          event: '*',               // can be 'INSERT', 'UPDATE', 'DELETE'
+          schema: 'public',
+          table: 'notes',
+        },
+        async (payload) => {
+          const { eventType, new: newData, old: oldData } = payload;
+          if (eventType === 'INSERT' || eventType === 'UPDATE') {
+            dispatch({
+              type: "UPSERT_NOTE",
+              note: newData
+            })
+          }
+          if (eventType === 'DELETE') {
+            dispatch({
+              type: "DELETE_NOTE",
+              id: oldData.noteId
+            })
+          }
+        }
+      )
+      .subscribe();
+      */
   }
 
-  /**
-   * Update notes and user info
-   */
+  // Update notes and user info
   const update = async () => {
-    init();
-    dispatch({
-      type: "FETCH_INITIAL_NOTES",
-    })
-    if(notes && containerRef.current) containerRef.current.scrollTop = containerRef.current.scrollHeight;
+    // Retrieve notes from local indexDB
+    if(!indexedDB && user) {
+      const db = await IndexedDB.create('MementoExtensionDB', [
+        { name: `notes-${user.id}`, options: { keyPath: 'id' } },
+      ]);
+      dispatch({
+        type: "SET_INDEXED_DB",
+        db: db
+      })
+    }
+    if(indexedDB && user) {
+      const localNotes = await indexedDB.getAll(`notes-${user.id}`);
+      dispatch({
+        type: "SET_NOTES",
+        newNotes: localNotes || []
+      })
+    }
+    // Add / remove notes of difference
     await syncNotes();
-    const dbNotes = await fetchNotes();
-    dispatch({
-      type: "SET_NOTES",
-      newNotes: dbNotes
-    })
+  }
+
+  useEffect(() => {
     if(containerRef.current) containerRef.current.scrollTop = containerRef.current.scrollHeight;
-  }
+  }, [firstRender])
 
-  const syncNotes = async () => {
-    // Load notes from local storage and Supabase
-    const localNotes = getNotesFromLocalStorage(user);
-    const supabaseNotes = await fetchNotes();
+  async function syncNotes() {
+    if(!indexedDB) return;
 
-    // Create a map for easier comparison
-    const localNotesMap = new Map(localNotes.map(n => [n.id, n]));
-    const supabaseNotesMap = new Map(supabaseNotes.map(n => [n.id, n]));
-
-    // Compare and synchronize
-    for (const [id, localNote] of localNotesMap) {
-        const supabaseNote = supabaseNotesMap.get(id);
-
-        if (!supabaseNote || new Date(localNote.created_at) > new Date(supabaseNote.created_at)) {
-
-        if(localNote.role == 'user') {
-            upsertNote({...localNote});
+    const remoteNotes = await fetchNotes();
+    const localMap: Map<string, Note> = new Map(notes.map((n: Note) => [n.id, n]));
+    const remoteMap: Map<string, Note> = new Map(remoteNotes.map((n: Note) => [n.id, n]));
+    const allNoteIds = new Set([...localMap.keys(), ...remoteMap.keys()]);
+  
+    for (const noteId of allNoteIds as Set<string>) {
+      const local = localMap.get(noteId);
+      const remote = remoteMap.get(noteId);
+  
+      if (!local && remote) {
+        // Only exists remotely
+        dispatch({
+          type: "UPSERT_NOTE",
+          note: remote
+        })
+      } else if (local && !remote) {
+        // Only exists locally
+        await upsertNote(local)
+      } else if (local && remote && local.last_updated !== remote.last_updated) {
+        // Both exist, but different
+        const localTime = new Date(local.last_updated);
+        const remoteTime = new Date(remote.last_updated);
+        if (localTime > remoteTime) {
+          await supabase.from('notes').upsert(local); // local wins
+        } else {
+          dispatch({
+            type: "UPSERT_NOTE",
+            note: remote
+          })
         }
-        } else if (new Date(localNote.created_at) < new Date(supabaseNote.created_at)) {
-        // Supabase note is newer
-        upsertNoteToLocalStorage(user, supabaseNote);
-        }
+      }
     }
-
-    // Handle notes that are only in Supabase
-    for (const [id, supabaseNote] of supabaseNotesMap) {
-        if (!localNotesMap.has(id)) {
-            upsertNoteToLocalStorage(user, supabaseNote);
-        }
-    }
-  }
+  }  
 
   const handleChat = async (input: string) => {
     const id = uuid();
@@ -137,7 +176,6 @@ export function MainPage () {
     if(response.function_call) {
       const functionName = response.function_call.name;
       const functionArgs = JSON.parse(response.function_call.arguments);
-      console.log(`functionArgs: ${JSON.stringify(functionArgs)}`);
       const formatDate = (isoString: string) => {
         const date = new Date(isoString);
         return date.toLocaleString(); // Adjust based on locale
@@ -145,7 +183,6 @@ export function MainPage () {
       if (functionName === 'setReminder') {
         try {
           await setReminder(functionArgs.message, functionArgs.reminderTime);
-          console.log(143)
           dispatch({
             type: "UPDATE_NOTE",
             id,
@@ -231,7 +268,10 @@ export function MainPage () {
       if (input) {
         // Command
         if (input.startsWith('/open ')) {
-          setEditing(noteSuggestions[noteSuggestions.length-1]);
+          dispatch({
+            type: "SET_EDITING",
+            note: noteSuggestions[noteSuggestions.length-1]
+          })
           setNoteSuggestions([]);
           setCommandSuggestions([]);
         }
@@ -242,17 +282,23 @@ export function MainPage () {
             role: "user",
             content: input.trim(),
           })
-          if(containerRef.current) containerRef.current.scrollTop = containerRef.current.scrollHeight;
+          if(containerRef && containerRef.current) containerRef.current.scrollTop = containerRef.current.scrollHeight;
           await handleChat(input.trim());
-          setEditing(null); // Close note editor
+          dispatch({
+            type: "SET_EDITING",
+            note: null
+          })
         } else {
           dispatch({
             type: "ADD_NOTE",
             role: "user",
             content: input,
           })
-          if(containerRef.current) containerRef.current.scrollTop = containerRef.current.scrollHeight;
-          setEditing(null); // Close note editor
+          if(containerRef && containerRef.current) containerRef.current.scrollTop = containerRef.current.scrollHeight;
+          dispatch({
+            type: "SET_EDITING",
+            note: null
+          })
         }
         //(e.target as HTMLInputElement).value = ""; // Clear the input field
       }
@@ -284,9 +330,7 @@ export function MainPage () {
   // Update notes and user info when user changes
   useEffect(() => {
     update();
-  }, [user]);
-
-  const [deletingNote, setDeletingNote] = useState<Note|null>(null); // Delete confirmation note
+  }, [user, indexedDB]);
 
   const navigate = useNavigate();
 
@@ -296,7 +340,7 @@ export function MainPage () {
     navigate("/setting");
   };  
 
-  const [showKnowledgeBase, setShowKnowledgeBase] = useState<{content: string, knowledgeBase: string[]} | null>(null);
+  const [showKnowledgeBase, setShowKnowledgeBase] = useState<{note: Note, knowledgeBase: string[]} | null>(null);
 
   const Syncing = () => {
     return (
@@ -375,35 +419,51 @@ export function MainPage () {
       onDragOver={(event) => {
         event.preventDefault();
       }}>
-      {editing && <NoteEdit 
-            content={editing.content} 
-            confirmDelete={() => setDeletingNote(editing)}
+      {editingNote && <NoteEdit 
+            confirmDelete={() => dispatch({
+              type: "SET_DELETING",
+              note: editingNote
+            })}            
+            content={editingNote.content} 
             onChange={async (e) => {
               const value = e.target.value;
               // Update locally
               dispatch({
                 type: "UPDATE_NOTE",
-                id: editing.id,
+                id: editingNote.id,
                 content: value
               })
             }} 
-            close={() => {setEditing(null)}}
+            close={() => {dispatch({
+              type: "SET_EDITING",
+              note: null
+            })}}
           />}
-      { deletingNote !== null ? 
+      {deletingNote !== null && (
         <DeleteConfirmationPopup 
-          note={deletingNote!} 
-          onDelete={()=>{
+          note={deletingNote} 
+          onDelete={() => {
             dispatch({
               type: "DELETE_NOTE",
-              id: deletingNote!.id,
-            })
-            setDeletingNote(null);
-            setEditing(null);
+              id: deletingNote.id,
+            });
+            dispatch({
+              type: "SET_DELETING",
+              note: null
+            });
+            dispatch({
+              type: "SET_EDITING",
+              note: null
+            });
           }}
-          onCancel={()=>setDeletingNote(null)}
-          /> : null }
+          onCancel={() => dispatch({
+            type: "SET_DELETING",
+            note: null
+          })}
+        />
+      )}
       {showKnowledgeBase && <KnowledgeBase 
-            content={showKnowledgeBase.content} 
+            note={showKnowledgeBase.note} 
             knowledgeBase={showKnowledgeBase.knowledgeBase}
             close={() => setShowKnowledgeBase(null)}
           />}
@@ -414,7 +474,6 @@ export function MainPage () {
           className="pt-3 pb-5 flex-grow overflow-auto flex flex-col scrollbar scrollbar-thumb-blue-500 scrollbar-track-gray-300">
           <NoteChat 
             notes={notes}
-            onNoteClick={(note) => {setEditing(note)}} 
             onNoteChange={async (id: string, content: string) => {
               dispatch({
                 type: "UPDATE_NOTE",
@@ -422,15 +481,14 @@ export function MainPage () {
                 content
               })
             }}
-            openKnowledgeBase={(content, knowledgeBase) => {
+            openKnowledgeBase={(note, knowledgeBase) => {
               const knowledgeBaseStr: string[] = []
               for (let i=0; i<knowledgeBase.length; i++) {
-                const note = notes.find(n => n.id == knowledgeBase[i].id);
                 if (note) {
                   knowledgeBaseStr.push(`${note.content}\n\n[S: ${knowledgeBase[i].similarity}]`)
                 }
               }
-              setShowKnowledgeBase({content, knowledgeBase: knowledgeBaseStr})
+              setShowKnowledgeBase({note, knowledgeBase: knowledgeBaseStr})
             }}/>
         </div>
         {
@@ -439,7 +497,10 @@ export function MainPage () {
             <div className='flex flex-col rounded-lg' style={{ backgroundColor: "#2f2f2f"}}>
               <div className='flex flex-col rounded-lg overflow-scroll max-h-[calc(100vh-10rem)]'>
                 {noteSuggestions.map(note => <Suggestion text={note.content} onClick={() => {
-                  setEditing(note);
+                  dispatch({
+                    type: "SET_EDITING",
+                    note: note
+                  })
                   setNoteSuggestions([]);
                   setInput('');
                 }}/>)}

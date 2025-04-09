@@ -2,13 +2,14 @@ import ReactMarkdown from "react-markdown";
 import { AssistantNote } from "../NoteChat/components";
 import { IoIosArrowBack } from "react-icons/io";
 import { MdOutlineStickyNote2 } from "react-icons/md";
+import { Note } from "../../types";
 
 const KnowledgeBase = ({
-    content,
+    note,
     knowledgeBase,
     close,
 }: {
-    content: string,
+    note: Note,
     knowledgeBase: string[],
     close: () => void
 }) => {
@@ -26,7 +27,7 @@ const KnowledgeBase = ({
             <IoIosArrowBack className='m-1 cursor-pointer' onClick={() => close()} size={22}/>
         </div>
         <div className='overflow-y-auto h-[100vh]'>
-            <AssistantNote content={content} />
+            <AssistantNote note={note} />
             <div 
                 className="flex items-center gap-1 text-xm p-3 text-[#919191]">
                 <MdOutlineStickyNote2 />

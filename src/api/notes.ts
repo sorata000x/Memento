@@ -5,7 +5,6 @@ import { getEmbedding } from './openai';
 
 const SUPABASE_URL = "https://vmosommpjhpawkanucoo.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZtb3NvbW1wamhwYXdrYW51Y29vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzUwMTg4NTcsImV4cCI6MjA1MDU5NDg1N30.XtL4l5rEajnnOslELP9iITQynlXTOjaV_3p-c_vSKFc";
-const PAGE_SIZE = 50;
 
 export const addUserToDatabase = async (user: User) => {
     if (!user) return;
@@ -92,43 +91,9 @@ export async function fetchNotes() {
 
     const { data: notes, error: notesError } = await supabase
         .from('notes')
-        .select('*')
+        .select('id, content, user_id, created_at, role, knowledge_base, hide, is_deleted, last_updated')
         .eq('user_id', userId)
         .order('created_at', { ascending: true });
-
-    if (notesError) throw notesError;
-    return notes;
-}
-
-export const fetchNotesCount = async () => {
-    const { data, error } = await supabase.auth.getUser();
-    const userId = data?.user?.id;
-    const { count, } = await supabase
-      .from("notes")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", userId); // Filter messages by user ID
-
-    if (error) {
-      console.error("Error fetching message count:", error);
-    } else {
-      return count;
-    }
-};
-
-export async function fetchNotesBatch(above: string) {
-    const { data, error } = await supabase.auth.getUser();
-    const userId = data?.user?.id;
-
-    if (error || !userId) throw new Error('User not authenticated');
-
-    const { data: notes, error: notesError } = await supabase
-        .from("notes")
-        .select("*")
-        .order("created_at", { ascending: false }) // Keep order consistent
-        .lt("id", above) // Fetch messages older than the oldest one we have
-        .limit(PAGE_SIZE);
-
-    console.log(`notes: ${JSON.stringify(notes?.map(n => n.content))}`)
 
     if (notesError) throw notesError;
     return notes;
@@ -158,7 +123,7 @@ export async function addNote({ role, content, embedding, filePaths }: {
 }
 
 // Update note
-export async function updateNote(id: string, content: string, embedding: number[], knowledge_base?: {id: string, similarity: number}[]) {
+export async function updateNote(id: string, content: string, embedding: number[], knowledge_base?: {id: string, similarity: number}[], hide?: boolean) {
     const { data, error } = await supabase.auth.getUser();
     const userId = data?.user?.id;
 
@@ -166,7 +131,7 @@ export async function updateNote(id: string, content: string, embedding: number[
 
     const { data: updatedNote, error: updateError } = await supabase
         .from('notes')
-        .update({ content, embedding, knowledge_base })
+        .update({ content, embedding, knowledge_base, hide })
         .eq('id', id); // Ensures the note belongs to the user
 
     if (updateError || !updatedNote) throw updateError;

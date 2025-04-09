@@ -1,3 +1,4 @@
+//@ts-nocheck
 import { useEffect, useRef, useState } from "react";
 import { MorePopUp } from "./components";
 import { IoIosArrowBack } from "react-icons/io";
@@ -22,7 +23,6 @@ const NoteEdit = ({content, confirmDelete, onChange, close}: {content: string, c
           <MorePopUp 
             confirmDelete={confirmDelete} 
             closePopUp={()=>setShowMorePopUp(false)}
-            closeEdit={()=>close()}
             /> : null}
         <div className='flex item-center justify-between'>
           <IoIosArrowBack className='m-1 mb-0 cursor-pointer' onClick={() => close()} size={22}/>
